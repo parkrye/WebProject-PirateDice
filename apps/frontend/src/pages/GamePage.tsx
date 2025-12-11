@@ -68,7 +68,9 @@ export function GamePage() {
         status: GameStatusType;
       }
     }) => {
+      console.log('room:join response:', response);
       if (response?.success && response.room) {
+        console.log('Setting players:', response.room.players);
         setHostId(response.room.hostId);
         setPlayers(response.room.players);
         setGameStatus(response.room.status);
@@ -77,6 +79,8 @@ export function GamePage() {
         if (myPlayer) {
           setIsReady(myPlayer.isReady);
         }
+      } else {
+        console.error('room:join failed:', response);
       }
     });
 
@@ -183,13 +187,22 @@ export function GamePage() {
 
   const handleReady = () => {
     if (!socket || !roomId) return;
-    socket.emit('game:ready', { roomId });
-    setIsReady(true);
+    socket.emit('game:ready', { roomId }, (response: { success: boolean; isReady?: boolean }) => {
+      if (response?.success) {
+        setIsReady(true);
+      } else {
+        console.error('Failed to set ready state');
+      }
+    });
   };
 
   const handleStartGame = () => {
     if (!socket || !roomId) return;
-    socket.emit('game:start', { roomId });
+    socket.emit('game:start', { roomId }, (response: { success: boolean }) => {
+      if (!response?.success) {
+        console.error('Failed to start game');
+      }
+    });
   };
 
   const handleBet = (diceValue: number, diceCount: number) => {

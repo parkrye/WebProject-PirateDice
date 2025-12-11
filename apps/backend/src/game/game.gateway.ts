@@ -81,6 +81,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: { roomId: string; playerId: string }
   ) {
     const { roomId, playerId } = payload;
+    console.log('room:join called:', { roomId, playerId, clientId: client.id });
 
     const room = this.roomsService.getRoom(roomId);
     if (!room) {
@@ -141,17 +142,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { roomId } = payload;
     const playerInfo = this.socketPlayerMap.get(client.id);
 
+    console.log('handleGameReady called:', { roomId, playerInfo, clientId: client.id });
+
     if (!playerInfo || playerInfo.roomId !== roomId) {
       client.emit(SERVER_EVENTS.ERROR, {
         code: 'INVALID_ROOM',
         message: '잘못된 게임방입니다.',
       });
-      return;
+      return { success: false, error: 'INVALID_ROOM' };
     }
 
     const engine = this.roomsService.getGameEngine(roomId);
     if (!engine) {
-      return;
+      return { success: false, error: 'ENGINE_NOT_FOUND' };
     }
 
     // 준비 상태 변경
