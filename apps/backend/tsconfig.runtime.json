@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./dist",
+    "paths": {
+      "@pirate-dice/constants": ["libs/constants/src/index.js"],
+      "@pirate-dice/entities": ["libs/entities/src/index.js"],
+      "@pirate-dice/types": ["libs/types/src/index.js"],
+      "@pirate-dice/services": ["libs/services/src/index.js"],
+      "@pirate-dice/game-engine": ["libs/game-engine/src/index.js"]
+    }
+  }
+}

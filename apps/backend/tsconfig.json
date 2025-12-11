@@ -4,18 +4,23 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "./src",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "baseUrl": "./",
+    "baseUrl": "../../",
     "paths": {
-      "@pirate-dice/constants": ["../../libs/constants/src/index.ts"],
-      "@pirate-dice/entities": ["../../libs/entities/src/index.ts"],
-      "@pirate-dice/types": ["../../libs/types/src/index.ts"],
-      "@pirate-dice/services": ["../../libs/services/src/index.ts"],
-      "@pirate-dice/game-engine": ["../../libs/game-engine/src/index.ts"]
-    }
+      "@pirate-dice/constants": ["libs/constants/src/index.ts"],
+      "@pirate-dice/entities": ["libs/entities/src/index.ts"],
+      "@pirate-dice/types": ["libs/types/src/index.ts"],
+      "@pirate-dice/services": ["libs/services/src/index.ts"],
+      "@pirate-dice/game-engine": ["libs/game-engine/src/index.ts"]
+    },
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "../../libs/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

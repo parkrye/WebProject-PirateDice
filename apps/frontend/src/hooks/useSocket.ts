@@ -2,28 +2,25 @@
  * Socket.io 연결 훅
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { ENV } from '../config/env';
 
 let socket: Socket | null = null;
 
 export function useSocket(): Socket | null {
-  const [connected, setConnected] = useState(false);
-
   useEffect(() => {
     if (!socket) {
-      socket = io({
+      socket = io(ENV.SOCKET_URL || window.location.origin, {
         autoConnect: true,
       });
 
       socket.on('connect', () => {
         console.log('Socket connected');
-        setConnected(true);
       });
 
       socket.on('disconnect', () => {
         console.log('Socket disconnected');
-        setConnected(false);
       });
     }
 

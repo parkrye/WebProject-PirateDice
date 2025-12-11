@@ -27,7 +27,7 @@ export const GAME_MESSAGES = {
   REVEAL_DICE: '모든 주사위를 공개합니다!',
 
   // 판정 결과
-  CHALLENGE_SUCCESS: (challengerName: string, bettorName: string, lostCount: number) =>
+  CHALLENGE_SUCCESS: (_challengerName: string, bettorName: string, lostCount: number) =>
     `도전 성공! ${bettorName}이(가) 주사위 ${lostCount}개를 잃습니다.`,
   CHALLENGE_FAIL: (challengerName: string, lostCount: number) =>
     `도전 실패! ${challengerName}이(가) 주사위 ${lostCount}개를 잃습니다.`,

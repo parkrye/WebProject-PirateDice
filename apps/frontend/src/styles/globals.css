@@ -205,8 +205,8 @@
   }
 
   /* 바다빛 글로우 텍스트 */
-  .text-sea-glow {
-    @apply text-sea-glow;
+  .sea-glow-text {
+    color: #2dd4bf;
     text-shadow: 0 0 8px rgba(45, 212, 191, 0.6);
   }
 

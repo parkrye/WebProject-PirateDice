@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pirate-dice-backend
+    runtime: node
+    buildCommand: npm install && npm run build:backend
+    startCommand: npm run start:backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://personal-project-park.web.app

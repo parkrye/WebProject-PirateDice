@@ -95,13 +95,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(roomId);
     this.socketPlayerMap.set(client.id, { playerId, roomId });
 
-    // 입장 알림
+    // 입장 알림 - 전체 플레이어 목록 포함
     const player = room.players.find(p => p.id === playerId);
     if (player) {
       this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_JOINED, {
         playerId,
         nickname: player.nickname,
         playerCount: room.players.length,
+        players: room.players.map(p => ({
+          id: p.id,
+          nickname: p.nickname,
+          diceCount: p.diceCount,
+          order: p.order,
+          isAlive: p.isAlive,
+          isReady: p.isReady,
+        })),
       });
     }
 
@@ -135,11 +143,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 준비 상태 변경
     engine.setPlayerReady(playerInfo.playerId, true);
 
-    const room = engine.getRoom();
+    // 모든 플레이어에게 준비 상태 변경 알림
+    this.server.to(roomId).emit('player:ready', {
+      playerId: playerInfo.playerId,
+      isReady: true,
+    });
 
     // 모두 준비되면 게임 시작 가능 알림
     if (engine.canStartGame()) {
-      // 방장에게 게임 시작 가능 알림
       this.server.to(roomId).emit('game:canStart', { canStart: true });
     }
 

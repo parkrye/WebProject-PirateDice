@@ -9,7 +9,9 @@ import { PlayerCard } from '../components/PlayerCard';
 import { DiceDisplay } from '../components/DiceDisplay';
 import { BettingPanel } from '../components/BettingPanel';
 import { GameStatus } from '../components/GameStatus';
+import { WaitingRoom } from '../components/WaitingRoom';
 import type { GameStatus as GameStatusType } from '@pirate-dice/types';
+import { GAME_CONFIG } from '@pirate-dice/constants';
 
 interface PlayerInfo {
   id: string;
@@ -37,8 +39,7 @@ export function GamePage() {
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState<string | null>(null);
   const [currentBet, setCurrentBet] = useState<CurrentBet | null>(null);
   const [round, setRound] = useState(0);
-  const [isHost, setIsHost] = useState(false);
-  const [canStart, setCanStart] = useState(false);
+  const [hostId, setHostId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   const playerId = sessionStorage.getItem('playerId');
@@ -46,6 +47,9 @@ export function GamePage() {
 
   const isMyTurn = currentTurnPlayerId === playerId;
   const isFirstTurn = currentBet === null;
+  const isHost = hostId === playerId;
+  const canStart = players.length >= GAME_CONFIG.MIN_PLAYERS &&
+                   players.every(p => p.isReady);
 
   useEffect(() => {
     if (!playerId || !nickname || !roomId) {
@@ -55,42 +59,96 @@ export function GamePage() {
 
     if (!socket) return;
 
-    // 방 참가
-    socket.emit('room:join', { roomId, playerId });
+    // 방 참가 및 초기 데이터 수신
+    socket.emit('room:join', { roomId, playerId }, (response: {
+      success: boolean;
+      room?: {
+        hostId: string;
+        players: PlayerInfo[];
+        status: GameStatusType;
+      }
+    }) => {
+      if (response?.success && response.room) {
+        setHostId(response.room.hostId);
+        setPlayers(response.room.players);
+        setGameStatus(response.room.status);
 
-    // 이벤트 리스너 설정
-    socket.on('player:joined', (data) => {
-      console.log('Player joined:', data);
+        const myPlayer = response.room.players.find(p => p.id === playerId);
+        if (myPlayer) {
+          setIsReady(myPlayer.isReady);
+        }
+      }
     });
 
-    socket.on('game:canStart', (data) => {
-      setCanStart(data.canStart);
+    // 플레이어 입장
+    socket.on('player:joined', (data: {
+      playerId: string;
+      nickname: string;
+      playerCount: number;
+      players?: PlayerInfo[];
+    }) => {
+      if (data.players) {
+        setPlayers(data.players);
+      } else {
+        setPlayers(prev => {
+          if (prev.find(p => p.id === data.playerId)) return prev;
+          return [...prev, {
+            id: data.playerId,
+            nickname: data.nickname,
+            diceCount: 0,
+            order: prev.length,
+            isAlive: true,
+            isReady: false,
+          }];
+        });
+      }
     });
 
-    socket.on('game:started', (data) => {
+    // 플레이어 퇴장
+    socket.on('player:left', (data: { playerId: string; playerCount: number }) => {
+      setPlayers(prev => prev.filter(p => p.id !== data.playerId));
+    });
+
+    // 플레이어 준비 상태 변경
+    socket.on('player:ready', (data: { playerId: string; isReady: boolean }) => {
+      setPlayers(prev => prev.map(p =>
+        p.id === data.playerId ? { ...p, isReady: data.isReady } : p
+      ));
+    });
+
+    // 게임 시작 가능 여부
+    socket.on('game:canStart', () => {
+      // canStart는 이제 로컬에서 계산하므로 이 이벤트는 무시해도 됨
+    });
+
+    socket.on('game:started', (data: {
+      players: PlayerInfo[];
+      firstPlayerId: string;
+    }) => {
       setGameStatus('playing');
-      setPlayers(data.players);
+      setPlayers(data.players.map(p => ({ ...p, isAlive: true, isReady: true })));
       setCurrentTurnPlayerId(data.firstPlayerId);
-      setIsHost(data.players.find((p: PlayerInfo) => p.order === 0)?.id === playerId);
     });
 
-    socket.on('round:started', (data) => {
+    socket.on('round:started', (data: { round: number; yourDice: number[] }) => {
       setRound(data.round);
       setMyDice(data.yourDice);
       setCurrentBet(null);
     });
 
-    socket.on('turn:changed', (data) => {
+    socket.on('turn:changed', (data: {
+      currentPlayerId: string;
+      currentBet: CurrentBet | null
+    }) => {
       setCurrentTurnPlayerId(data.currentPlayerId);
       setCurrentBet(data.currentBet);
     });
 
-    socket.on('challenge:result', (data) => {
+    socket.on('challenge:result', (data: { result: unknown }) => {
       console.log('Challenge result:', data.result);
-      // TODO: 결과 표시 모달
     });
 
-    socket.on('player:eliminated', (data) => {
+    socket.on('player:eliminated', (data: { playerId: string }) => {
       setPlayers((prev) =>
         prev.map((p) =>
           p.id === data.playerId ? { ...p, isAlive: false } : p
@@ -98,18 +156,20 @@ export function GamePage() {
       );
     });
 
-    socket.on('game:ended', (data) => {
+    socket.on('game:ended', (data: { winnerNickname: string }) => {
       setGameStatus('finished');
       alert(`${data.winnerNickname}님이 승리했습니다!`);
     });
 
-    socket.on('error', (data) => {
+    socket.on('error', (data: { message: string }) => {
       console.error('Socket error:', data);
       alert(data.message);
     });
 
     return () => {
       socket.off('player:joined');
+      socket.off('player:left');
+      socket.off('player:ready');
       socket.off('game:canStart');
       socket.off('game:started');
       socket.off('round:started');
@@ -146,40 +206,31 @@ export function GamePage() {
     <div className="min-h-screen p-4 flex flex-col">
       {/* 헤더 */}
       <header className="text-center mb-4">
-        <h1 className="text-2xl font-bold text-gold">Pirate Dice</h1>
-        <p className="text-gray-400">
+        <h1 className="title-pirate">🏴‍☠️ Pirate Dice</h1>
+        <p className="text-muted mt-2">
           {gameStatus === 'waiting'
-            ? '플레이어를 기다리는 중...'
-            : `라운드 ${round}`}
+            ? '선원들을 모으는 중...'
+            : `⚓ 라운드 ${round}`}
         </p>
       </header>
 
       {/* 게임 영역 */}
       <main className="flex-1 flex flex-col items-center justify-center">
         {gameStatus === 'waiting' ? (
-          <div className="text-center">
-            <p className="text-gray-100 mb-4">
-              방 코드: <span className="text-gold font-bold">{roomId}</span>
-            </p>
-
-            {!isReady ? (
-              <button onClick={handleReady} className="btn-primary mb-4">
-                준비 완료
-              </button>
-            ) : (
-              <p className="text-green-500 mb-4">준비 완료!</p>
-            )}
-
-            {isHost && canStart && (
-              <button onClick={handleStartGame} className="btn-primary">
-                게임 시작
-              </button>
-            )}
-          </div>
+          <WaitingRoom
+            roomId={roomId ?? ''}
+            players={players}
+            currentPlayerId={playerId ?? ''}
+            isHost={isHost}
+            isReady={isReady}
+            canStart={canStart}
+            onReady={handleReady}
+            onStartGame={handleStartGame}
+          />
         ) : (
           <>
             {/* 다른 플레이어들 */}
-            <div className="flex gap-4 mb-8">
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
               {players
                 .filter((p) => p.id !== playerId)
                 .map((player) => (
@@ -196,6 +247,7 @@ export function GamePage() {
 
             {/* 내 주사위 */}
             <div className="mt-8">
+              <h3 className="text-treasure text-center mb-2">🎲 내 주사위</h3>
               <DiceDisplay dice={myDice} />
             </div>
 
@@ -207,6 +259,15 @@ export function GamePage() {
                 onChallenge={handleChallenge}
                 canChallenge={!isFirstTurn}
               />
+            )}
+
+            {/* 대기 중 표시 */}
+            {!isMyTurn && (
+              <div className="mt-6 text-center text-muted">
+                <p className="animate-pulse">
+                  ⏳ {players.find(p => p.id === currentTurnPlayerId)?.nickname}의 차례입니다...
+                </p>
+              </div>
             )}
           </>
         )}

@@ -9,6 +9,19 @@ build/
 .next/
 out/
 
+# TypeScript build outputs in libs
+libs/**/*.js
+libs/**/*.js.map
+libs/**/*.d.ts
+libs/**/*.d.ts.map
+
+# Vite config build outputs
+apps/frontend/vite.config.js
+apps/frontend/vite.config.d.ts
+
+# Misc build artifacts
+nul
+
 # Testing
 coverage/
 

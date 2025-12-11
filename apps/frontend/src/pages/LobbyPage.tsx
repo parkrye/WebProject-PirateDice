@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PublicGameRoomInfo } from '@pirate-dice/entities';
+import { ENV } from '../config/env';
 
 export function LobbyPage() {
   const [rooms, setRooms] = useState<PublicGameRoomInfo[]>([]);
@@ -25,7 +26,7 @@ export function LobbyPage() {
 
   const fetchRooms = async () => {
     try {
-      const response = await fetch('/api/rooms');
+      const response = await fetch(`${ENV.API_URL}/api/rooms`);
       const data = await response.json();
       setRooms(data);
     } catch (error) {
@@ -40,7 +41,7 @@ export function LobbyPage() {
       const playerId = crypto.randomUUID();
       sessionStorage.setItem('playerId', playerId);
 
-      const response = await fetch('/api/rooms', {
+      const response = await fetch(`${ENV.API_URL}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,7 +63,7 @@ export function LobbyPage() {
       const playerId = crypto.randomUUID();
       sessionStorage.setItem('playerId', playerId);
 
-      const response = await fetch(`/api/rooms/${roomId}/join`, {
+      const response = await fetch(`${ENV.API_URL}/api/rooms/${roomId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

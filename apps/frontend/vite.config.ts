@@ -11,6 +11,7 @@ export default defineConfig({
       '@pirate-dice/entities': path.resolve(__dirname, '../../libs/entities/src/index.ts'),
       '@pirate-dice/types': path.resolve(__dirname, '../../libs/types/src/index.ts'),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
   server: {
     port: 3000,
