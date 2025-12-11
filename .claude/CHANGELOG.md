@@ -64,6 +64,61 @@
 
 ---
 
+### 게임 대기실 UI 및 배포 설정
+
+**요청**: 게임 룸에 현재 플레이어 목록을 띄우는 UI → 인원이 2인 이상일 때 방장이 시작 버튼 → 게임 UI 순서로 진행
+
+#### 변경 사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `apps/frontend/src/components/WaitingRoom.tsx` | 신규 생성. 플레이어 목록, 준비 상태, 시작 버튼 컴포넌트 |
+| `apps/frontend/src/pages/GamePage.tsx` | WaitingRoom 컴포넌트 연동, 호스트/준비 상태 관리 |
+| `apps/backend/src/game/game.gateway.ts` | player:ready 이벤트, 플레이어 목록 브로드캐스트 추가 |
+| `apps/frontend/src/main.tsx` | React Router v7 future flags 적용 |
+
+---
+
+### 프로덕션 배포 설정
+
+**요청**: localhost URL이 아닌 정식 게임 URL로 배포
+
+#### Firebase Hosting 배포
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `firebase.json` | 신규 생성. Firebase Hosting 설정 (SPA 라우팅) |
+| `.firebaserc` | 신규 생성. Firebase 프로젝트 연결 (personal-project-park) |
+| `apps/frontend/tsconfig.node.json` | composite, emitDeclarationOnly 설정 추가 (빌드 오류 수정) |
+
+#### Render 백엔드 배포
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `render.yaml` | 신규 생성. Render 배포 설정 |
+| `package.json` | start:backend 스크립트 추가 |
+| `apps/backend/tsconfig.runtime.json` | 신규 생성. 런타임용 tsconfig |
+
+#### 환경변수 분리
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `apps/frontend/src/config/env.ts` | 신규 생성. 환경변수 설정 모듈 |
+| `apps/frontend/.env.development` | 신규 생성. 개발 환경 설정 |
+| `apps/frontend/.env.production` | 신규 생성. 프로덕션 환경 설정 (Render 백엔드 URL) |
+| `apps/frontend/src/pages/LobbyPage.tsx` | API URL 환경변수 적용 |
+| `apps/frontend/src/hooks/useSocket.ts` | Socket URL 환경변수 적용 |
+| `apps/frontend/tsconfig.json` | vite/client 타입 추가 |
+
+#### 배포 URL
+
+| 환경 | URL |
+|------|-----|
+| 프론트엔드 | https://personal-project-park.web.app |
+| 백엔드 | https://webproject-piratedice-backend.onrender.com |
+
+---
+
 ### 프로젝트 기초 구조 생성
 
 **요청**: CLAUDE.md와 game_rules.md 문서를 참조하여 기초적인 프로젝트 작성
