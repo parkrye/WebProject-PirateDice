@@ -1,0 +1,29 @@
+{
+  "name": "pirate-dice",
+  "version": "0.1.0",
+  "description": "Pirate Dice - 블러핑 기반 주사위 게임 웹 애플리케이션",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=@pirate-dice/backend",
+    "dev:frontend": "npm run dev --workspace=@pirate-dice/frontend",
+    "build": "npm run build --workspaces",
+    "build:backend": "npm run build --workspace=@pirate-dice/backend",
+    "build:frontend": "npm run build --workspace=@pirate-dice/frontend",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "rimraf apps/*/dist libs/*/dist node_modules/.cache"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

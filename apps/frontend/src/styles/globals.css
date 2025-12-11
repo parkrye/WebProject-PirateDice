@@ -1,0 +1,313 @@
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=MedievalSharp&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Pirate Dice 글로벌 스타일
+ * 테마: 바다 + 해적선 + 보물
+ * @see .claude/CLAUDE.md UI 디자인 시스템 참조
+ */
+
+@layer base {
+  body {
+    @apply bg-ocean-gradient text-cream;
+    font-family: 'MedievalSharp', Georgia, serif;
+    min-height: 100vh;
+  }
+
+  /* 스크롤바 스타일링 */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-ocean-deep;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-wood-accent rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-wood-light;
+  }
+}
+
+@layer components {
+  /* ========================================
+     버튼 스타일
+     ======================================== */
+
+  /* 황금 보물 버튼 (주요 액션) */
+  .btn-treasure {
+    @apply bg-gradient-to-b from-treasure to-treasure-dark
+           text-wood-dark font-bold py-3 px-6 rounded-lg
+           border-2 border-treasure-dark
+           shadow-treasure
+           transform hover:scale-105 hover:shadow-lg
+           active:scale-95
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* 위험/도전 버튼 */
+  .btn-danger {
+    @apply bg-gradient-to-b from-red-600 to-red-800
+           text-cream font-bold py-3 px-6 rounded-lg
+           border-2 border-red-900
+           shadow-panel
+           transform hover:scale-105 hover:shadow-lg
+           active:scale-95
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* 나무 버튼 (보조 액션) */
+  .btn-wood {
+    @apply bg-gradient-to-b from-wood-light to-wood-dark
+           text-cream font-medium py-2 px-4 rounded-lg
+           border-2 border-wood-accent
+           shadow-panel
+           hover:from-wood-accent hover:to-wood-light
+           active:scale-95
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ========================================
+     주사위 스타일
+     ======================================== */
+
+  /* 기본 주사위 (양피지 색상) */
+  .dice {
+    @apply w-14 h-14 bg-parchment rounded-lg shadow-dice
+           flex items-center justify-center text-2xl font-bold
+           text-wood-dark border-2 border-parchment-dark;
+  }
+
+  /* 황금 주사위 (자신의 주사위) */
+  .dice-gold {
+    @apply w-14 h-14 bg-gradient-to-br from-treasure to-treasure-dark
+           rounded-lg shadow-dice-gold
+           flex items-center justify-center text-2xl font-bold
+           text-wood-dark border-2 border-treasure-dark;
+  }
+
+  /* 빛나는 황금 주사위 (강조) */
+  .dice-gold-glow {
+    @apply dice-gold animate-glow;
+  }
+
+  /* 숨겨진 주사위 (상대방) */
+  .dice-hidden {
+    @apply w-14 h-14 bg-wood-dark rounded-lg shadow-dice
+           flex items-center justify-center
+           border-2 border-wood-light;
+  }
+
+  /* 빨간 와일드카드 주사위 */
+  .dice-wild {
+    @apply w-14 h-14 bg-gradient-to-br from-red-500 to-red-700
+           rounded-lg shadow-dice
+           flex items-center justify-center text-2xl font-bold
+           text-cream border-2 border-red-900;
+  }
+
+  /* ========================================
+     패널 & 카드 스타일
+     ======================================== */
+
+  /* 나무 패널 */
+  .panel-wood {
+    @apply bg-gradient-to-b from-wood-light to-wood-dark
+           rounded-xl p-4 border-2 border-wood-accent
+           shadow-panel;
+  }
+
+  /* 양피지 패널 */
+  .panel-parchment {
+    @apply bg-parchment rounded-lg p-4
+           border-2 border-parchment-dark
+           shadow-panel text-wood-dark;
+  }
+
+  /* 플레이어 카드 (기본) */
+  .player-card {
+    @apply bg-gradient-to-b from-wood-light to-wood-dark
+           rounded-xl p-4 border-2 border-wood-accent
+           shadow-panel
+           transition-all duration-300;
+  }
+
+  /* 플레이어 카드 (자신) */
+  .player-card-self {
+    @apply bg-gradient-to-b from-wood-light to-wood-dark
+           rounded-xl p-4 border-2 border-treasure
+           shadow-treasure;
+  }
+
+  /* 플레이어 카드 (현재 턴) */
+  .player-card-turn {
+    @apply ring-2 ring-sea-glow shadow-glow-sea;
+  }
+
+  /* 보물상자 (중앙 베팅 영역) */
+  .treasure-chest {
+    @apply bg-gradient-to-b from-wood-accent to-wood-dark
+           rounded-xl p-6 border-4 border-treasure-dark
+           shadow-treasure relative overflow-hidden;
+  }
+
+  .treasure-chest::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-transparent to-treasure/10
+           pointer-events-none;
+  }
+
+  /* ========================================
+     입력 필드 스타일
+     ======================================== */
+
+  .input-pirate {
+    @apply w-full px-4 py-3
+           bg-ocean-mid border-2 border-wood-accent rounded-lg
+           text-cream placeholder-muted
+           focus:outline-none focus:border-treasure focus:shadow-treasure
+           transition-all duration-200;
+  }
+
+  .select-pirate {
+    @apply px-4 py-2
+           bg-ocean-mid border-2 border-wood-accent rounded-lg
+           text-cream
+           focus:outline-none focus:border-treasure
+           transition-all duration-200
+           cursor-pointer;
+  }
+
+  /* ========================================
+     타이틀 & 텍스트 스타일
+     ======================================== */
+
+  /* 해적 스타일 타이틀 */
+  .title-pirate {
+    @apply font-pirate text-4xl text-treasure
+           drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)];
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+
+  /* 보물 글로우 텍스트 */
+  .text-treasure-glow {
+    @apply text-treasure;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  }
+
+  /* 바다빛 글로우 텍스트 */
+  .text-sea-glow {
+    @apply text-sea-glow;
+    text-shadow: 0 0 8px rgba(45, 212, 191, 0.6);
+  }
+
+  /* ========================================
+     레이아웃 스타일
+     ======================================== */
+
+  /* 해적선 갑판 배경 */
+  .deck-floor {
+    @apply bg-wood-grain bg-wood-dark;
+  }
+
+  /* 바다 배경 */
+  .ocean-bg {
+    @apply bg-ocean-gradient min-h-screen;
+  }
+
+  /* 게임 보드 영역 */
+  .game-board {
+    @apply relative w-full max-w-4xl mx-auto p-4;
+  }
+
+  /* ========================================
+     상태 표시 스타일
+     ======================================== */
+
+  /* 생존 상태 뱃지 */
+  .badge-alive {
+    @apply inline-flex items-center px-2 py-1
+           bg-success/20 text-success text-xs rounded-full
+           border border-success/30;
+  }
+
+  /* 탈락 상태 뱃지 */
+  .badge-eliminated {
+    @apply inline-flex items-center px-2 py-1
+           bg-danger/20 text-red-400 text-xs rounded-full
+           border border-danger/30;
+  }
+
+  /* 준비 완료 뱃지 */
+  .badge-ready {
+    @apply inline-flex items-center px-2 py-1
+           bg-treasure/20 text-treasure text-xs rounded-full
+           border border-treasure/30;
+  }
+
+  /* ========================================
+     애니메이션 유틸리티
+     ======================================== */
+
+  /* 물결 효과 (배경) */
+  .wave-bg {
+    animation: wave-float 4s ease-in-out infinite;
+  }
+
+  @keyframes wave-float {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    25% { transform: translateY(-2px) rotate(0.5deg); }
+    50% { transform: translateY(0) rotate(0); }
+    75% { transform: translateY(2px) rotate(-0.5deg); }
+  }
+
+  /* 보물 반짝임 효과 */
+  .sparkle {
+    position: relative;
+  }
+
+  .sparkle::after {
+    content: '✦';
+    @apply absolute -top-1 -right-1 text-treasure text-xs animate-pulse;
+  }
+}
+
+@layer utilities {
+  /* 물결 테두리 효과 */
+  .wave-border {
+    border-image: repeating-linear-gradient(
+      90deg,
+      #2dd4bf 0px,
+      #0c1929 10px,
+      #2dd4bf 20px
+    ) 1;
+  }
+
+  /* 텍스트 그림자 */
+  .text-shadow-dark {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .text-shadow-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  /* 스크롤 숨기기 */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

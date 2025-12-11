@@ -1,0 +1,16 @@
+{
+  "name": "@pirate-dice/game-engine",
+  "version": "0.1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@pirate-dice/constants": "*",
+    "@pirate-dice/types": "*",
+    "@pirate-dice/entities": "*",
+    "@pirate-dice/services": "*"
+  }
+}

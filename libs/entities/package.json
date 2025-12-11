@@ -1,0 +1,12 @@
+{
+  "name": "@pirate-dice/entities",
+  "version": "0.1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@pirate-dice/types": "*"
+  }
+}
