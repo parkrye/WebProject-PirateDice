@@ -113,7 +113,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
 
-    return { success: true, room };
+    return {
+      success: true,
+      room: {
+        hostId: room.hostId,
+        status: room.status,
+        players: room.players.map(p => ({
+          id: p.id,
+          nickname: p.nickname,
+          diceCount: p.diceCount,
+          order: p.order,
+          isAlive: p.isAlive,
+          isReady: p.isReady,
+        })),
+      },
+    };
   }
 
   /**
