@@ -52,6 +52,7 @@ export function useAudio() {
   const [settings, setSettings] = useState<AudioSettings>(loadSettings);
   const [currentBgm, setCurrentBgm] = useState<BgmKey | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+  const [pendingBgm, setPendingBgm] = useState<BgmKey | null>(null);
 
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const sfxPoolRef = useRef<Map<string, HTMLAudioElement[]>>(new Map());
@@ -78,14 +79,45 @@ export function useAudio() {
     }
   }, [isAudioEnabled]);
 
+  // 오디오 활성화 시 대기 중인 BGM 재생
+  useEffect(() => {
+    if (isAudioEnabled && pendingBgm) {
+      const path = BGM[pendingBgm];
+      if (path) {
+        // 기존 BGM 정지
+        if (bgmRef.current) {
+          bgmRef.current.pause();
+          bgmRef.current.currentTime = 0;
+        }
+
+        // 새 BGM 재생
+        const audio = new Audio(path);
+        audio.loop = pendingBgm !== 'VICTORY';
+        audio.volume = settings.bgmMuted ? 0 : settings.bgmVolume;
+
+        audio.play().catch(err => {
+          console.warn('BGM 재생 실패:', err);
+        });
+
+        bgmRef.current = audio;
+        setCurrentBgm(pendingBgm);
+      }
+      setPendingBgm(null);
+    }
+  }, [isAudioEnabled, pendingBgm, settings.bgmVolume, settings.bgmMuted]);
+
   /**
    * BGM 재생
    */
   const playBgm = useCallback((key: BgmKey) => {
-    if (!isAudioEnabled) return;
-
     const path = BGM[key];
     if (!path) return;
+
+    // 오디오가 활성화되지 않았으면 대기열에 추가
+    if (!isAudioEnabled) {
+      setPendingBgm(key);
+      return;
+    }
 
     // 같은 BGM이 이미 재생 중이면 무시
     if (currentBgm === key && bgmRef.current && !bgmRef.current.paused) {
@@ -265,6 +297,29 @@ const AudioContext = createContext<AudioContextType | null>(null);
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const audio = useAudio();
+
+  // 첫 사용자 상호작용 시 자동으로 오디오 활성화
+  useEffect(() => {
+    if (audio.isAudioEnabled) return;
+
+    const handleInteraction = () => {
+      audio.enableAudio();
+      // 이벤트 리스너 제거
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+  }, [audio.isAudioEnabled, audio.enableAudio]);
 
   return (
     <AudioContext.Provider value={audio}>
