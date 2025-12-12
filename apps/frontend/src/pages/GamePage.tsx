@@ -631,9 +631,9 @@ export function GamePage() {
     console.log('Sending game:ready event:', { roomId });
     socket.emit('game:ready', { roomId }, (response: { success: boolean; isReady?: boolean; error?: string }) => {
       console.log('game:ready response:', response);
-      if (response?.success) {
-        setIsReady(true);
-      } else {
+      if (response?.success && response.isReady !== undefined) {
+        setIsReady(response.isReady);
+      } else if (!response?.success) {
         console.error('Failed to set ready state:', response?.error);
         alert(`준비 상태 변경 실패: ${response?.error || '알 수 없는 오류'}`);
       }

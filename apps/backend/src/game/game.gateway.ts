@@ -341,9 +341,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false, error: 'ENGINE_NOT_FOUND' };
     }
 
+    // 현재 준비 상태 확인 후 토글
+    const currentPlayer = engine.getRoom().players.find(p => p.id === playerInfo.playerId);
+    const newReadyState = !currentPlayer?.isReady;
+
     // 준비 상태 변경
-    const result = engine.setPlayerReady(playerInfo.playerId, true);
-    console.log('setPlayerReady result:', { playerId: playerInfo.playerId, result });
+    const result = engine.setPlayerReady(playerInfo.playerId, newReadyState);
+    console.log('setPlayerReady result:', { playerId: playerInfo.playerId, newReadyState, result });
 
     if (!result) {
       console.log('handleGameReady failed - setPlayerReady returned false');
@@ -353,10 +357,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 모든 플레이어에게 준비 상태 변경 알림
     this.server.to(roomId).emit('player:ready', {
       playerId: playerInfo.playerId,
-      isReady: true,
+      isReady: newReadyState,
     });
 
-    console.log('player:ready emitted:', { roomId, playerId: playerInfo.playerId });
+    console.log('player:ready emitted:', { roomId, playerId: playerInfo.playerId, isReady: newReadyState });
 
     // 모두 준비되면 게임 시작 가능 알림
     const canStart = engine.canStartGame();
@@ -366,7 +370,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(roomId).emit('game:canStart', { canStart: true });
     }
 
-    return { success: true, isReady: true };
+    return { success: true, isReady: newReadyState };
   }
 
   /**

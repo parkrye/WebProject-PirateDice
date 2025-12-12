@@ -146,7 +146,7 @@ export function WaitingRoom({
 
       {/* 액션 버튼 영역 */}
       <div className="flex flex-col items-center gap-3 sm:gap-4 px-2 sm:px-0">
-        {/* 준비 버튼 */}
+        {/* 준비/준비 취소 버튼 */}
         {!isReady ? (
           <button
             onClick={onReady}
@@ -156,8 +156,13 @@ export function WaitingRoom({
           </button>
         ) : (
           <div className="text-center">
-            <span className="text-success text-base sm:text-lg">✅ 준비 완료!</span>
-            <p className="text-muted text-xs sm:text-sm mt-1">다른 선원들을 기다리는 중...</p>
+            <button
+              onClick={onReady}
+              className="btn-wood w-full max-w-xs text-base sm:text-lg"
+            >
+              ❌ 준비 취소
+            </button>
+            <p className="text-muted text-xs sm:text-sm mt-2">다른 선원들을 기다리는 중...</p>
           </div>
         )}
 

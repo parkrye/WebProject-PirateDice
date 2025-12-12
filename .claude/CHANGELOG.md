@@ -6,6 +6,53 @@
 
 ## 2025-12-12
 
+### 프로젝트 마무리 - 오디오 및 UI 개선
+
+**요청**: 오디오 설정을 시작/로비 페이지에서도 가능하게, 준비 취소 버튼 추가
+
+#### 변경 사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `apps/frontend/src/pages/HomePage.tsx` | AudioControl 컴포넌트 추가, 버튼 클릭 SFX 추가 |
+| `apps/frontend/src/pages/LobbyPage.tsx` | AudioControl 컴포넌트 추가, 로비 BGM 재생, 버튼 클릭 SFX 추가 |
+| `apps/frontend/src/hooks/useAudio.tsx` | pendingBgm 상태 추가로 오디오 비활성화 시 BGM 대기열 저장, 자동 오디오 활성화 기능 추가 |
+| `apps/frontend/src/components/WaitingRoom.tsx` | 준비 취소 버튼 추가 (준비 완료 후 취소 가능) |
+| `apps/backend/src/game/game.gateway.ts` | handleGameReady 준비 상태 토글 기능으로 변경 |
+| `apps/backend/src/main.ts` | CORS 다중 origin 지원 (URL 마이그레이션 대응) |
+
+#### 기능 상세
+
+| 기능 | 설명 |
+|------|------|
+| 전역 오디오 컨트롤 | 시작 페이지, 로비 페이지, 게임 페이지 모든 곳에서 음소거/볼륨 조절 가능 |
+| 자동 오디오 활성화 | 첫 사용자 상호작용(클릭/터치/키입력) 시 자동으로 오디오 활성화 |
+| BGM 대기열 | 오디오 비활성화 상태에서 BGM 요청 시 대기열에 저장, 활성화되면 자동 재생 |
+| 준비 취소 | 대기실에서 준비 완료 후 "준비 취소" 버튼으로 준비 상태 해제 가능 |
+
+---
+
+### 게임 URL 변경
+
+**요청**: 게임 URL을 pirate-dice-game.web.app으로 변경
+
+#### 변경 사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `.firebaserc` | 기본 프로젝트를 pirate-dice-game으로 변경 |
+| `render.yaml` | FRONTEND_URL 환경변수 업데이트 |
+| `README.md` | 게임 URL 링크 업데이트 |
+
+#### 배포 정보
+
+| 항목 | URL |
+|------|-----|
+| Frontend | https://pirate-dice-game.web.app |
+| Backend | https://webproject-piratedice-backend.onrender.com |
+
+---
+
 ### BGM 및 SFX 오디오 시스템 추가
 
 **요청**: 외부에서 BGM, SFX 오디오를 추가할 수 있도록 프론트엔드 구성

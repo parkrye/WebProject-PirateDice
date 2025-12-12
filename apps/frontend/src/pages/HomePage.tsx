@@ -5,12 +5,16 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AudioControl } from '../components/AudioControl';
+import { useAudioContext } from '../hooks/useAudio';
 
 export function HomePage() {
   const [nickname, setNickname] = useState('');
   const navigate = useNavigate();
+  const { playSfx } = useAudioContext();
 
   const handleSubmit = (e: React.FormEvent) => {
+    playSfx('BUTTON_CLICK');
     e.preventDefault();
 
     if (nickname.trim().length < 2) {
@@ -23,7 +27,12 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4 relative">
+      {/* 오디오 컨트롤 - 우측 상단 */}
+      <div className="absolute top-4 right-4">
+        <AudioControl />
+      </div>
+
       <div className="w-full max-w-md">
         {/* 로고 & 타이틀 */}
         <div className="text-center mb-8">
