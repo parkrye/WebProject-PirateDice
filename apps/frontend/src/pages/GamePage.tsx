@@ -90,6 +90,19 @@ export function GamePage() {
   // 채팅 메시지 상태 (playerId -> message)
   const [chatMessages, setChatMessages] = useState<Record<string, string>>({});
 
+  // 도전 타임 상태
+  const [challengePhase, setChallengePhase] = useState<{
+    active: boolean;
+    bettorId: string;
+    bettorNickname: string;
+    bet: { diceValue: number; diceCount: number };
+    timeRemaining: number;
+    passedPlayerIds: string[];
+  } | null>(null);
+
+  // 탈락 상태
+  const [isEliminated, setIsEliminated] = useState(false);
+
   const playerId = sessionStorage.getItem('playerId');
   const nickname = sessionStorage.getItem('nickname');
 
@@ -112,6 +125,13 @@ export function GamePage() {
   const canStart = players.length >= GAME_CONFIG.MIN_PLAYERS &&
                    players.every(p => p.isReady);
 
+  // 도전 타임 중 도전/묵시 가능 여부
+  const canChallengeOrPass = challengePhase?.active &&
+    playerId &&
+    challengePhase.bettorId !== playerId &&
+    !challengePhase.passedPlayerIds.includes(playerId) &&
+    !isEliminated;
+
   // 베팅 알림 자동 숨김
   useEffect(() => {
     if (lastBet) {
@@ -119,6 +139,24 @@ export function GamePage() {
       return () => clearTimeout(timer);
     }
   }, [lastBet]);
+
+  // 도전 타임 카운트다운
+  useEffect(() => {
+    if (!challengePhase?.active || challengePhase.timeRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setChallengePhase(prev => {
+        if (!prev) return null;
+        const newTime = prev.timeRemaining - 1000;
+        if (newTime <= 0) {
+          return { ...prev, timeRemaining: 0 };
+        }
+        return { ...prev, timeRemaining: newTime };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [challengePhase?.active]);
 
   // 도전 결과 모달 닫기
   const handleCloseChallengeResult = useCallback(() => {
@@ -246,10 +284,17 @@ export function GamePage() {
     });
 
     // 라운드 시작 - 주사위 굴리기 애니메이션
-    socket.on('round:started', (data: { round: number; yourDice: number[] }) => {
-      // 이전 연출 상태 초기화
-      setChallengeResult(null);
+    socket.on('round:started', (data: { round: number; yourDice: number[]; isEliminated?: boolean }) => {
+      // 이전 연출 상태 초기화 (도전 결과 모달은 제외 - 모달에서 자체적으로 닫음)
       setLastBet(null);
+      setChallengePhase(null);
+
+      // 탈락 여부 확인
+      if (data.isEliminated) {
+        setIsEliminated(true);
+        setMyDice([]);
+        return;
+      }
 
       setRound(data.round);
       setCurrentBet(null);
@@ -269,7 +314,7 @@ export function GamePage() {
 
     // 턴 변경 - 베팅 알림 표시
     socket.on('turn:changed', (data: {
-      currentPlayerId: string;
+      currentPlayerId: string | null;
       currentBet: CurrentBet | null;
     }) => {
       setCurrentTurnPlayerId(data.currentPlayerId);
@@ -287,6 +332,45 @@ export function GamePage() {
       }
 
       setCurrentBet(data.currentBet);
+
+      // 도전 타임 종료 시 상태 초기화
+      if (data.currentPlayerId) {
+        setChallengePhase(null);
+      }
+    });
+
+    // 도전 타임 시작
+    socket.on('challenge:phase:started', (data: {
+      bettorId: string;
+      bettorNickname: string;
+      bet: { diceValue: number; diceCount: number };
+      timeoutMs: number;
+    }) => {
+      setChallengePhase({
+        active: true,
+        bettorId: data.bettorId,
+        bettorNickname: data.bettorNickname,
+        bet: data.bet,
+        timeRemaining: data.timeoutMs,
+        passedPlayerIds: [],
+      });
+    });
+
+    // 플레이어 패스
+    socket.on('player:passed', (data: {
+      playerId: string;
+      nickname: string;
+      passedPlayerIds: string[];
+    }) => {
+      setChallengePhase(prev => {
+        if (!prev) return null;
+        return { ...prev, passedPlayerIds: data.passedPlayerIds };
+      });
+    });
+
+    // 도전 타임 종료
+    socket.on('challenge:phase:ended', () => {
+      setChallengePhase(null);
     });
 
     // 도전 결과 - 모달 표시
@@ -374,6 +458,9 @@ export function GamePage() {
       socket.off('game:started');
       socket.off('round:started');
       socket.off('turn:changed');
+      socket.off('challenge:phase:started');
+      socket.off('player:passed');
+      socket.off('challenge:phase:ended');
       socket.off('challenge:result');
       socket.off('player:eliminated');
       socket.off('game:ended');
@@ -413,6 +500,11 @@ export function GamePage() {
   const handleChallenge = () => {
     if (!roomId) return;
     socket.emit('game:challenge', { roomId });
+  };
+
+  const handlePass = () => {
+    if (!roomId) return;
+    socket.emit('game:pass', { roomId });
   };
 
   const handleLeave = () => {
@@ -484,8 +576,10 @@ export function GamePage() {
             {/* 내 주사위 */}
             <div className="mt-4 sm:mt-8 relative">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <h3 className="text-treasure text-sm sm:text-base">🎲 내 주사위</h3>
-                <ChatButton onSendMessage={handleSendChat} />
+                <h3 className="text-treasure text-sm sm:text-base">
+                  {isEliminated ? '💀 탈락' : '🎲 내 주사위'}
+                </h3>
+                {!isEliminated && <ChatButton onSendMessage={handleSendChat} />}
               </div>
               {/* 내 말풍선 */}
               {playerId && chatMessages[playerId] && (
@@ -496,11 +590,78 @@ export function GamePage() {
                   </div>
                 </div>
               )}
-              <DiceDisplay dice={myDice} isRolling={isRolling} />
+              {isEliminated ? (
+                <div className="text-center py-8">
+                  <p className="text-danger text-lg font-bold mb-2">모든 주사위를 잃었습니다</p>
+                  <p className="text-muted text-sm">게임이 끝날 때까지 관전 중입니다...</p>
+                </div>
+              ) : (
+                <DiceDisplay dice={myDice} isRolling={isRolling} />
+              )}
             </div>
 
-            {/* 베팅 패널 */}
-            {isMyTurn && !isRolling && (
+            {/* 도전 타임 패널 */}
+            {challengePhase?.active && !isRolling && (
+              <div className="mt-4 animate-slide-up">
+                <div className="panel-wood p-4">
+                  {/* 타이머 */}
+                  <div className="text-center mb-3">
+                    <div className="text-2xl font-bold text-treasure">
+                      ⏱️ {Math.ceil(challengePhase.timeRemaining / 1000)}초
+                    </div>
+                    <p className="text-cream text-sm mt-1">
+                      <span className="text-treasure">{challengePhase.bettorNickname}</span>의 베팅:
+                      <span className="font-bold ml-1">
+                        "{challengePhase.bet.diceValue}이(가) {challengePhase.bet.diceCount}개 이상"
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* 도전/묵시 버튼 */}
+                  {canChallengeOrPass ? (
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={handleChallenge}
+                        className="btn-danger px-6 py-3 text-lg font-bold"
+                      >
+                        ⚔️ 도전!
+                      </button>
+                      <button
+                        onClick={handlePass}
+                        className="btn-wood px-6 py-3 text-lg"
+                      >
+                        🤐 묵시
+                      </button>
+                    </div>
+                  ) : challengePhase.bettorId === playerId ? (
+                    <p className="text-center text-muted">
+                      다른 플레이어들의 결정을 기다리는 중...
+                    </p>
+                  ) : challengePhase.passedPlayerIds.includes(playerId ?? '') ? (
+                    <p className="text-center text-muted">
+                      ✓ 묵시했습니다
+                    </p>
+                  ) : isEliminated ? (
+                    <p className="text-center text-muted">
+                      관전 중...
+                    </p>
+                  ) : null}
+
+                  {/* 묵시한 플레이어 표시 */}
+                  {challengePhase.passedPlayerIds.length > 0 && (
+                    <div className="mt-3 text-center text-muted text-sm">
+                      묵시: {challengePhase.passedPlayerIds.map(id => {
+                        const p = players.find(pl => pl.id === id);
+                        return p?.nickname ?? 'Unknown';
+                      }).join(', ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 베팅 패널 - 도전 타임이 아닐 때만 */}
+            {isMyTurn && !isRolling && !challengePhase?.active && !isEliminated && (
               <div className="animate-slide-up w-full">
                 <BettingPanel
                   currentBet={currentBet}
@@ -511,8 +672,8 @@ export function GamePage() {
               </div>
             )}
 
-            {/* 대기 중 표시 */}
-            {!isMyTurn && !isRolling && (
+            {/* 대기 중 표시 - 도전 타임이 아닐 때만 */}
+            {!isMyTurn && !isRolling && !challengePhase?.active && !isEliminated && (
               <div className="mt-4 sm:mt-6 text-center text-muted">
                 <p className="animate-pulse text-sm sm:text-base">
                   ⏳ {players.find(p => p.id === currentTurnPlayerId)?.nickname}의 차례입니다...

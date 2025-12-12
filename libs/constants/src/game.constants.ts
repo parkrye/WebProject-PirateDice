@@ -63,6 +63,8 @@ export const GAME_TIMING = {
   ROUND_START_DELAY: 2000,
   /** 판정 결과 표시 시간 */
   JUDGMENT_DISPLAY_TIME: 3000,
+  /** 도전 타임 (10초) */
+  CHALLENGE_PHASE_TIMEOUT: 10000,
 } as const;
 
 /**

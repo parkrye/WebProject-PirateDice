@@ -20,7 +20,18 @@ import {
   type GameBetPayload,
   type GameChallengePayload,
 } from '@pirate-dice/types';
-import { ERROR_MESSAGES } from '@pirate-dice/constants';
+import { ERROR_MESSAGES, GAME_TIMING } from '@pirate-dice/constants';
+
+/** 도전 타임 상태 */
+interface ChallengePhaseState {
+  bettorId: string;
+  bettorNickname: string;
+  bet: { diceValue: number; diceCount: number };
+  passedPlayerIds: Set<string>;
+  eligiblePlayerIds: string[];
+  timer: ReturnType<typeof setTimeout> | null;
+  nextPlayerId: string;
+}
 
 @WebSocketGateway({
   cors: {
@@ -33,6 +44,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** 소켓 ID -> { playerId, roomId } 매핑 */
   private socketPlayerMap: Map<string, { playerId: string; roomId: string }> = new Map();
+
+  /** 방 ID -> 도전 타임 상태 */
+  private challengePhaseMap: Map<string, ChallengePhaseState> = new Map();
 
   constructor(private readonly roomsService: RoomsService) {}
 
@@ -347,6 +361,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    // 도전 타임 중에는 베팅 불가
+    if (this.challengePhaseMap.has(roomId)) {
+      client.emit(SERVER_EVENTS.ERROR, {
+        code: 'CHALLENGE_PHASE_ACTIVE',
+        message: '도전 타임 중에는 베팅할 수 없습니다.',
+      });
+      return;
+    }
+
     const engine = this.roomsService.getGameEngine(roomId);
     if (!engine) {
       return;
@@ -365,10 +388,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const room = engine.getRoom();
     const currentBet = engine.getCurrentBet();
+    const bettor = room.players.find(p => p.id === playerInfo.playerId);
 
-    // 베팅 알림
+    // 베팅 알림 (턴 변경 없이 현재 베팅 정보만)
     this.server.to(roomId).emit(SERVER_EVENTS.TURN_CHANGED, {
-      currentPlayerId: room.currentTurnPlayerId,
+      currentPlayerId: null, // 도전 타임 동안은 턴 없음
       currentBet: currentBet
         ? {
             playerId: currentBet.playerId,
@@ -377,6 +401,159 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }
         : null,
     });
+
+    // 도전 타임 시작
+    this.startChallengePhase(roomId, {
+      bettorId: playerInfo.playerId,
+      bettorNickname: bettor?.nickname ?? 'Unknown',
+      bet: { diceValue, diceCount },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * 도전 타임 시작
+   */
+  private startChallengePhase(
+    roomId: string,
+    betInfo: { bettorId: string; bettorNickname: string; bet: { diceValue: number; diceCount: number } }
+  ) {
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) return;
+
+    const room = engine.getRoom();
+
+    // 도전 가능한 플레이어 (베팅자 제외, 생존자만)
+    const eligiblePlayers = room.players.filter(
+      p => p.id !== betInfo.bettorId && p.isAlive
+    );
+
+    // 다음 턴 플레이어 계산
+    const alivePlayers = room.players.filter(p => p.isAlive).sort((a, b) => a.order - b.order);
+    const currentIdx = alivePlayers.findIndex(p => p.id === betInfo.bettorId);
+    const nextIdx = (currentIdx + 1) % alivePlayers.length;
+    const nextPlayerId = alivePlayers[nextIdx]?.id ?? betInfo.bettorId;
+
+    const challengePhase: ChallengePhaseState = {
+      bettorId: betInfo.bettorId,
+      bettorNickname: betInfo.bettorNickname,
+      bet: betInfo.bet,
+      passedPlayerIds: new Set(),
+      eligiblePlayerIds: eligiblePlayers.map(p => p.id),
+      nextPlayerId,
+      timer: null,
+    };
+
+    // 타이머 설정
+    challengePhase.timer = setTimeout(() => {
+      this.endChallengePhase(roomId, 'timeout');
+    }, GAME_TIMING.CHALLENGE_PHASE_TIMEOUT);
+
+    this.challengePhaseMap.set(roomId, challengePhase);
+
+    // 도전 타임 시작 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.CHALLENGE_PHASE_STARTED, {
+      bettorId: betInfo.bettorId,
+      bettorNickname: betInfo.bettorNickname,
+      bet: betInfo.bet,
+      timeoutMs: GAME_TIMING.CHALLENGE_PHASE_TIMEOUT,
+    });
+  }
+
+  /**
+   * 도전 타임 종료
+   */
+  private endChallengePhase(roomId: string, reason: 'timeout' | 'all_passed') {
+    const challengePhase = this.challengePhaseMap.get(roomId);
+    if (!challengePhase) return;
+
+    // 타이머 정리
+    if (challengePhase.timer) {
+      clearTimeout(challengePhase.timer);
+    }
+
+    this.challengePhaseMap.delete(roomId);
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) return;
+
+    const room = engine.getRoom();
+
+    // 다음 턴으로 전환
+    room.currentTurnPlayerId = challengePhase.nextPlayerId;
+
+    // 도전 타임 종료 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.CHALLENGE_PHASE_ENDED, {
+      reason,
+      nextPlayerId: challengePhase.nextPlayerId,
+    });
+
+    // 턴 변경 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.TURN_CHANGED, {
+      currentPlayerId: challengePhase.nextPlayerId,
+      currentBet: {
+        playerId: challengePhase.bettorId,
+        diceValue: challengePhase.bet.diceValue,
+        diceCount: challengePhase.bet.diceCount,
+      },
+    });
+  }
+
+  /**
+   * 묵시 (패스)
+   */
+  @SubscribeMessage(CLIENT_EVENTS.GAME_PASS)
+  handlePass(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string }
+  ) {
+    const { roomId } = payload;
+    const playerInfo = this.socketPlayerMap.get(client.id);
+
+    if (!playerInfo || playerInfo.roomId !== roomId) {
+      return { success: false, error: 'INVALID_REQUEST' };
+    }
+
+    const challengePhase = this.challengePhaseMap.get(roomId);
+    if (!challengePhase) {
+      return { success: false, error: 'NO_CHALLENGE_PHASE' };
+    }
+
+    // 이미 패스한 플레이어인지 확인
+    if (challengePhase.passedPlayerIds.has(playerInfo.playerId)) {
+      return { success: false, error: 'ALREADY_PASSED' };
+    }
+
+    // 도전 가능한 플레이어인지 확인
+    if (!challengePhase.eligiblePlayerIds.includes(playerInfo.playerId)) {
+      return { success: false, error: 'NOT_ELIGIBLE' };
+    }
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) return { success: false, error: 'ENGINE_NOT_FOUND' };
+
+    const room = engine.getRoom();
+    const player = room.players.find(p => p.id === playerInfo.playerId);
+
+    // 패스 기록
+    challengePhase.passedPlayerIds.add(playerInfo.playerId);
+
+    // 패스 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_PASSED, {
+      playerId: playerInfo.playerId,
+      nickname: player?.nickname ?? 'Unknown',
+      passedPlayerIds: Array.from(challengePhase.passedPlayerIds),
+    });
+
+    // 모든 플레이어가 패스했는지 확인
+    const allPassed = challengePhase.eligiblePlayerIds.every(id =>
+      challengePhase.passedPlayerIds.has(id)
+    );
+
+    if (allPassed) {
+      this.endChallengePhase(roomId, 'all_passed');
+    }
 
     return { success: true };
   }
@@ -396,9 +573,35 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    const challengePhase = this.challengePhaseMap.get(roomId);
+
+    // 도전 타임이 활성화되어 있으면 해당 상태에서 도전 처리
+    if (challengePhase) {
+      // 도전 가능한 플레이어인지 확인
+      if (!challengePhase.eligiblePlayerIds.includes(playerInfo.playerId)) {
+        client.emit(SERVER_EVENTS.ERROR, {
+          code: 'NOT_ELIGIBLE',
+          message: '도전할 수 없는 플레이어입니다.',
+        });
+        return;
+      }
+
+      // 타이머 정리
+      if (challengePhase.timer) {
+        clearTimeout(challengePhase.timer);
+      }
+      this.challengePhaseMap.delete(roomId);
+    }
+
     const engine = this.roomsService.getGameEngine(roomId);
     if (!engine) {
       return;
+    }
+
+    // 도전 타임 중이면 임시로 현재 턴을 도전자로 설정
+    const room = engine.getRoom();
+    if (challengePhase) {
+      room.currentTurnPlayerId = playerInfo.playerId;
     }
 
     // 도전 처리
@@ -411,8 +614,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    const room = engine.getRoom();
 
     // 도전 결과 알림
     this.server.to(roomId).emit(SERVER_EVENTS.CHALLENGE_RESULT, { result });
@@ -439,13 +640,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // 다음 라운드 시작 - 각 플레이어에게 새 주사위 전송
       for (const [socketId, info] of this.socketPlayerMap) {
         if (info.roomId === roomId) {
+          const player = room.players.find(p => p.id === info.playerId);
           const dice = engine.getPlayerDice(info.playerId);
           this.server.to(socketId).emit(SERVER_EVENTS.ROUND_STARTED, {
             round: room.currentRound,
             yourDice: dice,
+            isEliminated: player ? !player.isAlive : false,
           });
         }
       }
+
+      // 현재 턴 플레이어 알림
+      this.server.to(roomId).emit(SERVER_EVENTS.TURN_CHANGED, {
+        currentPlayerId: room.currentTurnPlayerId,
+        currentBet: null,
+      });
     }
 
     return { success: true };

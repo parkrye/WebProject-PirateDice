@@ -94,6 +94,30 @@ export interface ErrorPayload {
   message: string;
 }
 
+/** 도전 타임 시작 이벤트 */
+export interface ChallengePhaseStartedPayload {
+  bettorId: string;
+  bettorNickname: string;
+  bet: {
+    diceValue: number;
+    diceCount: number;
+  };
+  timeoutMs: number;
+}
+
+/** 플레이어 패스 이벤트 */
+export interface PlayerPassedPayload {
+  playerId: string;
+  nickname: string;
+  passedPlayerIds: string[];
+}
+
+/** 도전 타임 종료 이벤트 (타임아웃 또는 모두 패스) */
+export interface ChallengePhaseEndedPayload {
+  reason: 'timeout' | 'all_passed';
+  nextPlayerId: string;
+}
+
 // ============================================
 // Event Names
 // ============================================
@@ -103,6 +127,7 @@ export const CLIENT_EVENTS = {
   GAME_READY: 'game:ready',
   GAME_BET: 'game:bet',
   GAME_CHALLENGE: 'game:challenge',
+  GAME_PASS: 'game:pass',
   PLAYER_JOIN: 'player:join',
   PLAYER_LEAVE: 'player:leave',
 } as const;
@@ -112,6 +137,9 @@ export const SERVER_EVENTS = {
   GAME_STARTED: 'game:started',
   ROUND_STARTED: 'round:started',
   TURN_CHANGED: 'turn:changed',
+  CHALLENGE_PHASE_STARTED: 'challenge:phase:started',
+  CHALLENGE_PHASE_ENDED: 'challenge:phase:ended',
+  PLAYER_PASSED: 'player:passed',
   CHALLENGE_RESULT: 'challenge:result',
   PLAYER_ELIMINATED: 'player:eliminated',
   GAME_ENDED: 'game:ended',

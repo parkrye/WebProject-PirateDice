@@ -428,15 +428,21 @@ export function RoundStartOverlay({ round, onComplete }: RoundStartOverlayProps)
   }, [onComplete]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
-      <div className="text-center animate-bounce-in">
-        <div className="text-6xl mb-4">⚓</div>
-        <h2 className="text-4xl font-bold text-treasure-glow">
-          라운드 {round}
-        </h2>
-        <p className="text-xl text-cream mt-2 animate-fade-in">
-          주사위를 굴립니다...
-        </p>
+    <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none animate-fade-in">
+      {/* 반투명 배경 */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {/* 컨텐츠 */}
+      <div className="relative z-10 text-center animate-bounce-in">
+        <div className="panel-wood px-12 py-8 rounded-xl">
+          <div className="text-6xl mb-4">⚓</div>
+          <h2 className="text-4xl font-bold text-treasure-glow">
+            라운드 {round}
+          </h2>
+          <p className="text-xl text-cream mt-2 animate-fade-in">
+            주사위를 굴립니다...
+          </p>
+        </div>
       </div>
     </div>
   );
