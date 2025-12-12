@@ -93,15 +93,16 @@ export function LobbyPage() {
   };
 
   return (
-    <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 safe-area-inset">
+    <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 safe-area-inset relative">
+      {/* 오디오 컨트롤 - 우측 상단 고정 */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
+        <AudioControl />
+      </div>
+
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 gap-3 sm:gap-4 relative">
-          {/* 오디오 컨트롤 - 좌측 상단 */}
-          <div className="absolute top-0 left-0">
-            <AudioControl />
-          </div>
-          <div className="text-center sm:text-left sm:ml-12">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 gap-3 sm:gap-4">
+          <div className="text-center sm:text-left">
             <h1 className="title-pirate flex items-center gap-2 justify-center sm:justify-start">
               <span>🏴‍☠️</span> 해적 선술집
             </h1>

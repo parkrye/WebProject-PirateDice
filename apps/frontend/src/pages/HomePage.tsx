@@ -3,7 +3,7 @@
  * 테마: 해적선 선착장
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AudioControl } from '../components/AudioControl';
 import { useAudioContext } from '../hooks/useAudio';
@@ -11,7 +11,12 @@ import { useAudioContext } from '../hooks/useAudio';
 export function HomePage() {
   const [nickname, setNickname] = useState('');
   const navigate = useNavigate();
-  const { playSfx } = useAudioContext();
+  const { playSfx, playBgm } = useAudioContext();
+
+  // 로비 BGM 재생 (로그인 페이지에서도 로비 BGM 사용)
+  useEffect(() => {
+    playBgm('LOBBY');
+  }, [playBgm]);
 
   const handleSubmit = (e: React.FormEvent) => {
     playSfx('BUTTON_CLICK');
@@ -30,38 +35,82 @@ export function HomePage() {
     <div className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden">
       {/* 배경 해적선 애니메이션 */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* 해적선 1 - 좌에서 우로 */}
+        {/* 대형 해적선 - 느리게 */}
         <div
-          className="absolute text-2xl opacity-20 animate-sail-right"
-          style={{ top: '15%', animationDuration: '25s', animationDelay: '0s' }}
+          className="absolute text-6xl opacity-15 animate-sail-right"
+          style={{ top: '20%', animationDuration: '40s', animationDelay: '0s' }}
         >
-          ⛵
+          🏴‍☠️
         </div>
-        {/* 해적선 2 - 우에서 좌로 */}
         <div
-          className="absolute text-3xl opacity-15 animate-sail-left"
-          style={{ top: '35%', animationDuration: '30s', animationDelay: '5s' }}
-        >
-          🚢
-        </div>
-        {/* 해적선 3 - 좌에서 우로 */}
-        <div
-          className="absolute text-xl opacity-25 animate-sail-right"
-          style={{ top: '60%', animationDuration: '20s', animationDelay: '10s' }}
-        >
-          ⛵
-        </div>
-        {/* 해적선 4 - 우에서 좌로 */}
-        <div
-          className="absolute text-2xl opacity-20 animate-sail-left"
-          style={{ top: '80%', animationDuration: '35s', animationDelay: '3s' }}
+          className="absolute text-7xl opacity-12 animate-sail-left"
+          style={{ top: '70%', animationDuration: '45s', animationDelay: '15s' }}
         >
           🚢
         </div>
-        {/* 해적선 5 - 좌에서 우로 (작은 배) */}
+
+        {/* 중형 해적선 */}
         <div
-          className="absolute text-lg opacity-30 animate-sail-right"
-          style={{ top: '45%', animationDuration: '22s', animationDelay: '8s' }}
+          className="absolute text-5xl opacity-20 animate-sail-left"
+          style={{ top: '10%', animationDuration: '35s', animationDelay: '5s' }}
+        >
+          ⛵
+        </div>
+        <div
+          className="absolute text-4xl opacity-18 animate-sail-right"
+          style={{ top: '40%', animationDuration: '30s', animationDelay: '10s' }}
+        >
+          🚢
+        </div>
+        <div
+          className="absolute text-5xl opacity-15 animate-sail-left"
+          style={{ top: '55%', animationDuration: '38s', animationDelay: '20s' }}
+        >
+          🏴‍☠️
+        </div>
+        <div
+          className="absolute text-4xl opacity-20 animate-sail-right"
+          style={{ top: '85%', animationDuration: '32s', animationDelay: '8s' }}
+        >
+          ⛵
+        </div>
+
+        {/* 소형 해적선 - 빠르게 */}
+        <div
+          className="absolute text-3xl opacity-25 animate-sail-right"
+          style={{ top: '30%', animationDuration: '22s', animationDelay: '3s' }}
+        >
+          ⛵
+        </div>
+        <div
+          className="absolute text-3xl opacity-22 animate-sail-left"
+          style={{ top: '48%', animationDuration: '25s', animationDelay: '12s' }}
+        >
+          🚤
+        </div>
+        <div
+          className="absolute text-2xl opacity-30 animate-sail-right"
+          style={{ top: '65%', animationDuration: '20s', animationDelay: '7s' }}
+        >
+          ⛵
+        </div>
+        <div
+          className="absolute text-3xl opacity-25 animate-sail-left"
+          style={{ top: '92%', animationDuration: '28s', animationDelay: '18s' }}
+        >
+          🚤
+        </div>
+
+        {/* 추가 배들 */}
+        <div
+          className="absolute text-4xl opacity-18 animate-sail-right"
+          style={{ top: '5%', animationDuration: '33s', animationDelay: '25s' }}
+        >
+          🚢
+        </div>
+        <div
+          className="absolute text-2xl opacity-28 animate-sail-left"
+          style={{ top: '78%', animationDuration: '24s', animationDelay: '2s' }}
         >
           ⛵
         </div>

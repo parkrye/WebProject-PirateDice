@@ -710,26 +710,26 @@ export function GamePage() {
     <div className="min-h-screen min-h-dvh p-2 sm:p-4 flex flex-col safe-area-inset">
       {/* 헤더 */}
       <header className="text-center mb-2 sm:mb-4 flex-shrink-0 relative">
-        {/* 오디오 컨트롤 - 좌측 상단 */}
-        <div className="absolute top-0 left-0">
-          <AudioControl />
-        </div>
+        {/* 좌측: 도망치기 버튼 (게임 중에만) */}
+        {gameStatus === 'playing' && (
+          <button
+            onClick={handleRunaway}
+            className="absolute top-0 left-0 btn-wood px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm"
+            title="게임에서 탈락하고 로비로 이동"
+          >
+            🏃 도망
+          </button>
+        )}
         <h1 className="title-pirate">🏴‍☠️ Pirate Dice</h1>
         <p className="text-muted text-xs sm:text-sm mt-1 sm:mt-2">
           {gameStatus === 'waiting'
             ? '선원들을 모으는 중...'
             : `⚓ 라운드 ${round}`}
         </p>
-        {/* 도망치기 버튼 - 게임 중에만 표시 */}
-        {gameStatus === 'playing' && (
-          <button
-            onClick={handleRunaway}
-            className="absolute top-0 right-0 btn-wood px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm"
-            title="게임에서 탈락하고 로비로 이동"
-          >
-            🏃 도망
-          </button>
-        )}
+        {/* 오디오 컨트롤 - 우측 상단 */}
+        <div className="absolute top-0 right-0">
+          <AudioControl />
+        </div>
       </header>
 
       {/* 게임 영역 */}
