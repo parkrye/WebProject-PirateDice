@@ -15,7 +15,6 @@ export function AudioControl() {
     sfxMuted,
     bgmVolume,
     sfxVolume,
-    toggleMuteAll,
     toggleBgmMute,
     toggleSfxMute,
     setBgmVolume,
@@ -25,19 +24,7 @@ export function AudioControl() {
 
   const [showPanel, setShowPanel] = useState(false);
 
-  const handleToggle = () => {
-    if (!isAudioEnabled) {
-      enableAudio();
-      playSfx('BUTTON_CLICK');
-    } else {
-      toggleMuteAll();
-      if (isMuted) {
-        playSfx('BUTTON_CLICK');
-      }
-    }
-  };
-
-  const handleShowPanel = () => {
+  const handleClick = () => {
     if (!isAudioEnabled) {
       enableAudio();
     }
@@ -47,17 +34,13 @@ export function AudioControl() {
 
   return (
     <div className="relative">
-      {/* 메인 버튼 */}
+      {/* 메인 버튼 - 클릭 시 설정 패널 열림 */}
       <button
-        onClick={handleToggle}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          handleShowPanel();
-        }}
+        onClick={handleClick}
         className="btn-wood px-2 py-1 text-lg"
-        title={isAudioEnabled ? (isMuted ? '음소거 해제' : '음소거') : '오디오 활성화 (우클릭: 설정)'}
+        title="오디오 설정"
       >
-        {!isAudioEnabled ? '🔇' : isMuted ? '🔇' : '🔊'}
+        {isMuted ? '🔇' : '🔊'}
       </button>
 
       {/* 설정 패널 */}

@@ -51,7 +51,7 @@ function saveSettings(settings: AudioSettings): void {
 export function useAudio() {
   const [settings, setSettings] = useState<AudioSettings>(loadSettings);
   const [currentBgm, setCurrentBgm] = useState<BgmKey | null>(null);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true); // 기본 활성화
   const [pendingBgm, setPendingBgm] = useState<BgmKey | null>(null);
 
   const bgmRef = useRef<HTMLAudioElement | null>(null);

@@ -27,13 +27,52 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 relative">
+    <div className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden">
+      {/* 배경 해적선 애니메이션 */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* 해적선 1 - 좌에서 우로 */}
+        <div
+          className="absolute text-2xl opacity-20 animate-sail-right"
+          style={{ top: '15%', animationDuration: '25s', animationDelay: '0s' }}
+        >
+          ⛵
+        </div>
+        {/* 해적선 2 - 우에서 좌로 */}
+        <div
+          className="absolute text-3xl opacity-15 animate-sail-left"
+          style={{ top: '35%', animationDuration: '30s', animationDelay: '5s' }}
+        >
+          🚢
+        </div>
+        {/* 해적선 3 - 좌에서 우로 */}
+        <div
+          className="absolute text-xl opacity-25 animate-sail-right"
+          style={{ top: '60%', animationDuration: '20s', animationDelay: '10s' }}
+        >
+          ⛵
+        </div>
+        {/* 해적선 4 - 우에서 좌로 */}
+        <div
+          className="absolute text-2xl opacity-20 animate-sail-left"
+          style={{ top: '80%', animationDuration: '35s', animationDelay: '3s' }}
+        >
+          🚢
+        </div>
+        {/* 해적선 5 - 좌에서 우로 (작은 배) */}
+        <div
+          className="absolute text-lg opacity-30 animate-sail-right"
+          style={{ top: '45%', animationDuration: '22s', animationDelay: '8s' }}
+        >
+          ⛵
+        </div>
+      </div>
+
       {/* 오디오 컨트롤 - 우측 상단 */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-10">
         <AudioControl />
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         {/* 로고 & 타이틀 */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-wave">⚓</div>
