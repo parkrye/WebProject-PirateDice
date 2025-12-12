@@ -176,7 +176,8 @@ PORT=10000
 
 | Event | Direction | 설명 |
 |-------|-----------|------|
-| `room:join` | Client → Server | 방 참가 |
+| `room:join` | Client → Server | 방 참가 (callback으로 {success, room?, error?} 반환) |
+| `room:leave` | Client → Server | 방 퇴장 |
 | `game:ready` | Client → Server | 준비 완료 |
 | `game:start` | Client → Server | 게임 시작 (방장) |
 | `game:bet` | Client → Server | 베팅 |

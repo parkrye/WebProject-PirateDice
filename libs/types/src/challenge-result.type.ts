@@ -20,6 +20,10 @@ export interface ChallengeResult {
   winner: ChallengeWinner;
   /** 결과 타입 */
   resultType: ChallengeResultType;
+  /** 도전자 플레이어 ID */
+  challengerId: string;
+  /** 베팅자 플레이어 ID */
+  bettorId: string;
   /** 패배자 플레이어 ID (R=Y인 경우 배열) */
   loserPlayerIds: string[];
   /** 잃을 주사위 개수 */

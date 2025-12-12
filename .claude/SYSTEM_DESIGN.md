@@ -82,12 +82,18 @@ type PlayerAction = 'bet' | 'challenge';
 
 | Event (Client -> Server) | Payload | 설명 |
 |--------------------------|---------|------|
+| `room:join` | `{ roomId, playerId, nickname }` | 방 참가 (callback: `{ success, room?, error? }`) |
+| `room:leave` | `{ roomId, playerId }` | 방 퇴장 |
 | `game:ready` | `{ roomId }` | 게임 준비 완료 |
+| `game:start` | `{ roomId }` | 게임 시작 (방장) |
 | `game:bet` | `{ roomId, diceValue, diceCount }` | 베팅 |
 | `game:challenge` | `{ roomId }` | 도전 (블러프 선언) |
 
 | Event (Server -> Client) | Payload | 설명 |
 |--------------------------|---------|------|
+| `player:joined` | `{ player, players }` | 플레이어 입장 알림 |
+| `player:left` | `{ playerId, players }` | 플레이어 퇴장 알림 |
+| `player:ready` | `{ playerId, isReady }` | 준비 상태 변경 |
 | `game:started` | `{ players, firstPlayerId }` | 게임 시작 |
 | `round:started` | `{ round, yourDice }` | 라운드 시작 (본인 주사위) |
 | `turn:changed` | `{ currentPlayerId, currentBet }` | 턴 변경 |

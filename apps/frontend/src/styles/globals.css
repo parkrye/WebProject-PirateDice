@@ -11,10 +11,39 @@
  */
 
 @layer base {
+  /* 모바일 기본 설정 */
+  html {
+    /* iOS safe area 지원 */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    /* 터치 하이라이트 제거 */
+    -webkit-tap-highlight-color: transparent;
+    /* 텍스트 크기 조정 방지 */
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-ocean-gradient text-cream;
     font-family: 'MedievalSharp', Georgia, serif;
     min-height: 100vh;
+    min-height: 100dvh; /* 동적 뷰포트 높이 (모바일 주소창 고려) */
+    /* 터치 스크롤 최적화 */
+    -webkit-overflow-scrolling: touch;
+    /* 오버스크롤 방지 */
+    overscroll-behavior: none;
+  }
+
+  /* 모바일 입력 필드 스타일 개선 */
+  input, select, textarea, button {
+    /* 모바일에서 폰트 크기 16px 이상으로 자동 확대 방지 */
+    font-size: 16px;
+    /* 터치 타겟 최소 크기 */
+    min-height: 44px;
+  }
+
+  /* 터치 대상 최소 크기 보장 */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   /* 스크롤바 스타일링 */
@@ -46,10 +75,18 @@
            text-wood-dark font-bold py-3 px-6 rounded-lg
            border-2 border-treasure-dark
            shadow-treasure
-           transform hover:scale-105 hover:shadow-lg
-           active:scale-95
+           transform active:scale-95
            transition-all duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           /* 모바일 터치 친화적 */
+           touch-action-manipulation select-none;
+  }
+
+  /* 데스크톱에서만 호버 효과 */
+  @media (hover: hover) {
+    .btn-treasure:hover:not(:disabled) {
+      @apply scale-105 shadow-lg;
+    }
   }
 
   /* 위험/도전 버튼 */
@@ -58,10 +95,16 @@
            text-cream font-bold py-3 px-6 rounded-lg
            border-2 border-red-900
            shadow-panel
-           transform hover:scale-105 hover:shadow-lg
-           active:scale-95
+           transform active:scale-95
            transition-all duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           touch-action-manipulation select-none;
+  }
+
+  @media (hover: hover) {
+    .btn-danger:hover:not(:disabled) {
+      @apply scale-105 shadow-lg;
+    }
   }
 
   /* 나무 버튼 (보조 액션) */
@@ -70,29 +113,37 @@
            text-cream font-medium py-2 px-4 rounded-lg
            border-2 border-wood-accent
            shadow-panel
-           hover:from-wood-accent hover:to-wood-light
            active:scale-95
            transition-all duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           disabled:opacity-50 disabled:cursor-not-allowed
+           touch-action-manipulation select-none;
+  }
+
+  @media (hover: hover) {
+    .btn-wood:hover:not(:disabled) {
+      @apply from-wood-accent to-wood-light;
+    }
   }
 
   /* ========================================
      주사위 스타일
      ======================================== */
 
-  /* 기본 주사위 (양피지 색상) */
+  /* 기본 주사위 (양피지 색상) - 모바일에서 약간 작게 */
   .dice {
-    @apply w-14 h-14 bg-parchment rounded-lg shadow-dice
-           flex items-center justify-center text-2xl font-bold
-           text-wood-dark border-2 border-parchment-dark;
+    @apply w-12 h-12 sm:w-14 sm:h-14 bg-parchment rounded-lg shadow-dice
+           flex items-center justify-center text-xl sm:text-2xl font-bold
+           text-wood-dark border-2 border-parchment-dark
+           flex-shrink-0;
   }
 
   /* 황금 주사위 (자신의 주사위) */
   .dice-gold {
-    @apply w-14 h-14 bg-gradient-to-br from-treasure to-treasure-dark
+    @apply w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-treasure to-treasure-dark
            rounded-lg shadow-dice-gold
-           flex items-center justify-center text-2xl font-bold
-           text-wood-dark border-2 border-treasure-dark;
+           flex items-center justify-center text-xl sm:text-2xl font-bold
+           text-wood-dark border-2 border-treasure-dark
+           flex-shrink-0;
   }
 
   /* 빛나는 황금 주사위 (강조) */
@@ -102,17 +153,19 @@
 
   /* 숨겨진 주사위 (상대방) */
   .dice-hidden {
-    @apply w-14 h-14 bg-wood-dark rounded-lg shadow-dice
+    @apply w-12 h-12 sm:w-14 sm:h-14 bg-wood-dark rounded-lg shadow-dice
            flex items-center justify-center
-           border-2 border-wood-light;
+           border-2 border-wood-light
+           flex-shrink-0;
   }
 
   /* 빨간 와일드카드 주사위 */
   .dice-wild {
-    @apply w-14 h-14 bg-gradient-to-br from-red-500 to-red-700
+    @apply w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-500 to-red-700
            rounded-lg shadow-dice
-           flex items-center justify-center text-2xl font-bold
-           text-cream border-2 border-red-900;
+           flex items-center justify-center text-xl sm:text-2xl font-bold
+           text-cream border-2 border-red-900
+           flex-shrink-0;
   }
 
   /* ========================================
@@ -191,9 +244,9 @@
      타이틀 & 텍스트 스타일
      ======================================== */
 
-  /* 해적 스타일 타이틀 */
+  /* 해적 스타일 타이틀 - 모바일 반응형 */
   .title-pirate {
-    @apply font-pirate text-4xl text-treasure
+    @apply font-pirate text-2xl sm:text-3xl md:text-4xl text-treasure
            drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)];
     text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
   }
@@ -309,5 +362,29 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Safe area 패딩 */
+  .safe-area-inset {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* 터치 액션 유틸리티 */
+  .touch-action-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* 모바일 스크롤 최적화 */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 텍스트 선택 방지 (게임 UI용) */
+  .select-none-touch {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 }

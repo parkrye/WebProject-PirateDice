@@ -78,43 +78,62 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('room:join')
   handleRoomJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { roomId: string; playerId: string }
-  ) {
+    @MessageBody() payload: { roomId: string; playerId: string },
+  ): { success: boolean; room?: object; error?: string } {
     const { roomId, playerId } = payload;
     console.log('room:join called:', { roomId, playerId, clientId: client.id });
 
     const room = this.roomsService.getRoom(roomId);
     if (!room) {
-      client.emit(SERVER_EVENTS.ERROR, {
-        code: 'ROOM_NOT_FOUND',
-        message: ERROR_MESSAGES.ROOM_NOT_FOUND,
-      });
-      return;
+      console.log('room:join failed - room not found:', roomId);
+      return {
+        success: false,
+        error: ERROR_MESSAGES.ROOM_NOT_FOUND,
+      };
+    }
+
+    // 플레이어가 방에 존재하는지 확인
+    const player = room.players.find(p => p.id === playerId);
+    if (!player) {
+      console.log('room:join failed - player not in room:', { roomId, playerId, players: room.players.map(p => p.id) });
+      return {
+        success: false,
+        error: '플레이어가 방에 존재하지 않습니다.',
+      };
     }
 
     // 소켓 룸 참가
     client.join(roomId);
     this.socketPlayerMap.set(client.id, { playerId, roomId });
 
-    // 입장 알림 - 전체 플레이어 목록 포함
-    const player = room.players.find(p => p.id === playerId);
-    if (player) {
-      this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_JOINED, {
-        playerId,
-        nickname: player.nickname,
-        playerCount: room.players.length,
-        players: room.players.map(p => ({
-          id: p.id,
-          nickname: p.nickname,
-          diceCount: p.diceCount,
-          order: p.order,
-          isAlive: p.isAlive,
-          isReady: p.isReady,
-        })),
-      });
-    }
+    console.log('room:join success:', { roomId, playerId, playerCount: room.players.length });
 
-    return {
+    const playersData = room.players.map(p => ({
+      id: p.id,
+      nickname: p.nickname,
+      diceCount: p.diceCount,
+      order: p.order,
+      isAlive: p.isAlive,
+      isReady: p.isReady,
+    }));
+
+    // 다른 플레이어들에게 입장 알림 (본인 제외)
+    client.to(roomId).emit(SERVER_EVENTS.PLAYER_JOINED, {
+      playerId,
+      nickname: player.nickname,
+      playerCount: room.players.length,
+      players: playersData,
+    });
+
+    // 본인에게도 room:synced 이벤트 전송 (콜백 응답 백업)
+    client.emit('room:synced', {
+      hostId: room.hostId,
+      status: room.status,
+      players: playersData,
+    });
+
+    // 방 정보 반환 (NestJS가 자동으로 ack로 전송)
+    const response = {
       success: true,
       room: {
         hostId: room.hostId,
@@ -129,6 +148,59 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         })),
       },
     };
+    console.log('room:join returning:', JSON.stringify(response));
+    return response;
+  }
+
+  /**
+   * 방 나가기
+   */
+  @SubscribeMessage('room:leave')
+  handleRoomLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string },
+  ): { success: boolean; error?: string } {
+    const { roomId } = payload;
+    const playerInfo = this.socketPlayerMap.get(client.id);
+
+    console.log('room:leave called:', { roomId, playerInfo, clientId: client.id });
+
+    if (!playerInfo) {
+      return { success: false, error: 'PLAYER_NOT_FOUND' };
+    }
+
+    if (playerInfo.roomId !== roomId) {
+      return { success: false, error: 'INVALID_ROOM' };
+    }
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) {
+      return { success: false, error: 'ROOM_NOT_FOUND' };
+    }
+
+    const room = engine.getRoom();
+
+    // 게임 중에는 나갈 수 없음
+    if (room.status === 'playing') {
+      return { success: false, error: 'GAME_IN_PROGRESS' };
+    }
+
+    // 방에서 플레이어 제거
+    this.roomsService.leaveRoom(roomId, playerInfo.playerId);
+
+    // 소켓 룸에서 나가기
+    client.leave(roomId);
+    this.socketPlayerMap.delete(client.id);
+
+    // 다른 플레이어들에게 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_LEFT, {
+      playerId: playerInfo.playerId,
+      playerCount: room.players.length,
+    });
+
+    console.log('room:leave success:', { roomId, playerId: playerInfo.playerId });
+
+    return { success: true };
   }
 
   /**
@@ -138,27 +210,42 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleGameReady(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: GameReadyPayload
-  ) {
+  ): { success: boolean; isReady?: boolean; error?: string } {
     const { roomId } = payload;
     const playerInfo = this.socketPlayerMap.get(client.id);
 
-    console.log('handleGameReady called:', { roomId, playerInfo, clientId: client.id });
+    console.log('handleGameReady called:', {
+      roomId,
+      playerInfo,
+      clientId: client.id,
+      socketMapSize: this.socketPlayerMap.size,
+      socketMapKeys: Array.from(this.socketPlayerMap.keys()),
+    });
 
-    if (!playerInfo || playerInfo.roomId !== roomId) {
-      client.emit(SERVER_EVENTS.ERROR, {
-        code: 'INVALID_ROOM',
-        message: '잘못된 게임방입니다.',
-      });
+    if (!playerInfo) {
+      console.log('handleGameReady failed - playerInfo not found for socket:', client.id);
+      return { success: false, error: 'PLAYER_NOT_FOUND' };
+    }
+
+    if (playerInfo.roomId !== roomId) {
+      console.log('handleGameReady failed - room mismatch:', { expected: playerInfo.roomId, received: roomId });
       return { success: false, error: 'INVALID_ROOM' };
     }
 
     const engine = this.roomsService.getGameEngine(roomId);
     if (!engine) {
+      console.log('handleGameReady failed - engine not found:', roomId);
       return { success: false, error: 'ENGINE_NOT_FOUND' };
     }
 
     // 준비 상태 변경
-    engine.setPlayerReady(playerInfo.playerId, true);
+    const result = engine.setPlayerReady(playerInfo.playerId, true);
+    console.log('setPlayerReady result:', { playerId: playerInfo.playerId, result });
+
+    if (!result) {
+      console.log('handleGameReady failed - setPlayerReady returned false');
+      return { success: false, error: 'SET_READY_FAILED' };
+    }
 
     // 모든 플레이어에게 준비 상태 변경 알림
     this.server.to(roomId).emit('player:ready', {
@@ -166,8 +253,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       isReady: true,
     });
 
+    console.log('player:ready emitted:', { roomId, playerId: playerInfo.playerId });
+
     // 모두 준비되면 게임 시작 가능 알림
-    if (engine.canStartGame()) {
+    const canStart = engine.canStartGame();
+    console.log('canStartGame:', { roomId, canStart });
+
+    if (canStart) {
       this.server.to(roomId).emit('game:canStart', { canStart: true });
     }
 
@@ -355,6 +447,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
     }
+
+    return { success: true };
+  }
+
+  /**
+   * 채팅 메시지 전송
+   */
+  @SubscribeMessage('chat:send')
+  handleChatSend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string; message: string }
+  ): { success: boolean; error?: string } {
+    const { roomId, message } = payload;
+    const playerInfo = this.socketPlayerMap.get(client.id);
+
+    if (!playerInfo || playerInfo.roomId !== roomId) {
+      return { success: false, error: 'INVALID_ROOM' };
+    }
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) {
+      return { success: false, error: 'ROOM_NOT_FOUND' };
+    }
+
+    const room = engine.getRoom();
+    const player = room.players.find(p => p.id === playerInfo.playerId);
+
+    if (!player) {
+      return { success: false, error: 'PLAYER_NOT_FOUND' };
+    }
+
+    // 모든 플레이어에게 채팅 메시지 브로드캐스트
+    this.server.to(roomId).emit('chat:message', {
+      playerId: playerInfo.playerId,
+      nickname: player.nickname,
+      message,
+    });
 
     return { success: true };
   }

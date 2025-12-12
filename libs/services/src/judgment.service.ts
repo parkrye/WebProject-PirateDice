@@ -74,6 +74,8 @@ export function judgeChallenge(input: JudgeChallengeInput): ChallengeResult {
   return {
     winner,
     resultType,
+    challengerId,
+    bettorId: currentBet.playerId,
     loserPlayerIds,
     diceToLose,
     actualCount,

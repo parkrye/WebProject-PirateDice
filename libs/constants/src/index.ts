@@ -5,3 +5,4 @@
 
 export * from './game.constants';
 export * from './messages.constants';
+export * from './chat.constants';
