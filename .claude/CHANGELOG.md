@@ -324,7 +324,7 @@ apps/frontend/public/audio/
 
 | 환경 | URL |
 |------|-----|
-| 프론트엔드 | https://personal-project-park.web.app |
+| 프론트엔드 | https://pirate-dice-game.web.app |
 | 백엔드 | https://webproject-piratedice-backend.onrender.com |
 
 ---

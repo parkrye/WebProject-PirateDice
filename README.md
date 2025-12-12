@@ -26,7 +26,7 @@ Pirate Dice는 "Liar's Dice" 규칙을 기반으로 한 멀티플레이어 블�
 
 ### 온라인 플레이
 
-게임 URL: **https://personal-project-park.web.app**
+게임 URL: **https://pirate-dice-game.web.app**
 
 1. 사이트에 접속합니다
 2. 닉네임을 입력하고 "항해 시작!" 버튼을 클릭합니다
@@ -156,7 +156,7 @@ VITE_API_URL=https://webproject-piratedice-backend.onrender.com
 #### Backend (Render 환경변수)
 ```
 NODE_ENV=production
-FRONTEND_URL=https://personal-project-park.web.app
+FRONTEND_URL=https://pirate-dice-game.web.app
 PORT=10000
 ```
 

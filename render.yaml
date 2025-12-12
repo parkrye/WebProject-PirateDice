@@ -8,4 +8,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://personal-project-park.web.app
+        value: https://pirate-dice-game.web.app
