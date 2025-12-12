@@ -34,7 +34,8 @@
       "Bash(cmd //c \"taskkill /PID 43104 /F\")",
       "Bash(cmd //c \"taskkill /PID 31000 /F\")",
       "Bash(cmd //c \"taskkill /PID 32844 /F\")",
-      "Bash(ren:*)"
+      "Bash(ren:*)",
+      "Bash(firebase projects:create:*)"
     ]
   }
 }
