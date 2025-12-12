@@ -210,6 +210,11 @@ export class GameEngine {
     }
 
     const alivePlayers = this.room.players.filter(p => p.isAlive);
+
+    // 턴 관리자에 생존 플레이어 목록 갱신
+    this.turnManager.updateAlivePlayers(this.room.players);
+    this.turnManager.setCurrentPlayer(firstBettorId);
+
     const round = this.roundManager.startNewRound(firstBettorId, alivePlayers);
 
     this.room.currentRound = round.roundNumber;

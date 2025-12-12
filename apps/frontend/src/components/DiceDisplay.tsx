@@ -7,10 +7,11 @@ import { useState, useEffect } from 'react';
 
 interface DiceDisplayProps {
   dice: number[];
-  variant?: 'gold' | 'parchment' | 'hidden';
+  variant?: 'gold' | 'parchment' | 'hidden' | 'wild';
   size?: 'sm' | 'md' | 'lg';
   isRolling?: boolean;
   showAnimation?: boolean;
+  highlightWildcards?: boolean;
 }
 
 /**
@@ -39,7 +40,7 @@ function Dice({
   delay = 0,
 }: {
   value: number;
-  variant?: 'gold' | 'parchment' | 'hidden';
+  variant?: 'gold' | 'parchment' | 'hidden' | 'wild';
   size?: 'sm' | 'md' | 'lg';
   isRolling?: boolean;
   delay?: number;
@@ -82,8 +83,8 @@ function Dice({
   }
 
   const dots = DICE_DOTS[displayValue] ?? [];
-  const diceClass = variant === 'gold' ? 'dice-gold' : 'dice';
-  const dotColor = variant === 'gold' ? 'bg-wood-dark' : 'bg-wood-dark';
+  const diceClass = variant === 'wild' ? 'dice-wild' : variant === 'gold' ? 'dice-gold' : 'dice';
+  const dotColor = variant === 'wild' ? 'bg-cream' : 'bg-wood-dark';
 
   const animationClass = animating
     ? 'animate-dice-roll'
@@ -121,19 +122,24 @@ export function DiceDisplay({
   size = 'md',
   isRolling = false,
   showAnimation = true,
+  highlightWildcards = true,
 }: DiceDisplayProps) {
   return (
     <div className="flex gap-2 justify-center flex-wrap">
-      {dice.map((value, index) => (
-        <Dice
-          key={index}
-          value={value}
-          variant={variant}
-          size={size}
-          isRolling={isRolling}
-          delay={showAnimation ? index * 100 : 0}
-        />
-      ))}
+      {dice.map((value, index) => {
+        // 1은 와일드카드이므로 빨간색으로 표시
+        const diceVariant = highlightWildcards && value === 1 ? 'wild' : variant;
+        return (
+          <Dice
+            key={index}
+            value={value}
+            variant={diceVariant}
+            size={size}
+            isRolling={isRolling}
+            delay={showAnimation ? index * 100 : 0}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -200,6 +206,8 @@ export function AllDiceReveal({ allDice, targetValue, isRevealing = false }: All
           <div className="flex gap-1 flex-wrap">
             {player.dice.map((value, diceIndex) => {
               const isTarget = value === targetValue || value === 1; // 1은 와일드카드
+              // 1은 빨간 와일드카드로 표시
+              const diceVariant = value === 1 ? 'wild' : 'parchment';
               return (
                 <div
                   key={diceIndex}
@@ -211,7 +219,7 @@ export function AllDiceReveal({ allDice, targetValue, isRevealing = false }: All
                   <Dice
                     value={value}
                     size="sm"
-                    variant={value === 1 ? 'gold' : 'parchment'}
+                    variant={diceVariant}
                     isRolling={isRevealing && !revealed}
                     delay={(playerIndex * 5 + diceIndex) * 100}
                   />
