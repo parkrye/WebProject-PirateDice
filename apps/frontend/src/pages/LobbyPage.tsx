@@ -7,11 +7,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PublicGameRoomInfo } from '@pirate-dice/entities';
 import { ENV } from '../config/env';
+import { AudioControl } from '../components/AudioControl';
+import { useAudioContext } from '../hooks/useAudio';
 
 export function LobbyPage() {
   const [rooms, setRooms] = useState<PublicGameRoomInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { playBgm, playSfx } = useAudioContext();
 
   const nickname = sessionStorage.getItem('nickname');
 
@@ -21,8 +24,10 @@ export function LobbyPage() {
       return;
     }
 
+    // 로비 BGM 재생
+    playBgm('LOBBY');
     fetchRooms();
-  }, [nickname, navigate]);
+  }, [nickname, navigate, playBgm]);
 
   const fetchRooms = async () => {
     try {
@@ -37,6 +42,7 @@ export function LobbyPage() {
   };
 
   const createRoom = async () => {
+    playSfx('BUTTON_CLICK');
     try {
       const playerId = crypto.randomUUID();
       sessionStorage.setItem('playerId', playerId);
@@ -59,6 +65,7 @@ export function LobbyPage() {
   };
 
   const joinRoom = async (roomId: string) => {
+    playSfx('BUTTON_CLICK');
     try {
       const playerId = crypto.randomUUID();
       sessionStorage.setItem('playerId', playerId);
@@ -89,8 +96,12 @@ export function LobbyPage() {
     <div className="min-h-screen min-h-dvh p-3 sm:p-4 md:p-8 safe-area-inset">
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 gap-3 sm:gap-4">
-          <div className="text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 gap-3 sm:gap-4 relative">
+          {/* 오디오 컨트롤 - 좌측 상단 */}
+          <div className="absolute top-0 left-0">
+            <AudioControl />
+          </div>
+          <div className="text-center sm:text-left sm:ml-12">
             <h1 className="title-pirate flex items-center gap-2 justify-center sm:justify-start">
               <span>🏴‍☠️</span> 해적 선술집
             </h1>

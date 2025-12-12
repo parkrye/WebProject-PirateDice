@@ -9,8 +9,22 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // CORS 설정
+  const allowedOrigins = [
+    process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    'https://pirate-dice-game.web.app',
+    'https://personal-project-park.web.app',
+    'http://localhost:3000',
+  ];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: (origin, callback) => {
+      // origin이 없는 경우 (같은 origin 요청) 허용
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
 
