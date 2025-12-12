@@ -6,6 +6,73 @@
 
 ## 2025-12-12
 
+### BGM 및 SFX 오디오 시스템 추가
+
+**요청**: 외부에서 BGM, SFX 오디오를 추가할 수 있도록 프론트엔드 구성
+
+#### 변경 사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `libs/constants/src/audio.constants.ts` | 신규 생성. BGM/SFX 파일 경로 상수 정의 |
+| `apps/frontend/src/hooks/useAudio.tsx` | 신규 생성. 오디오 관리 훅 (BGM 재생/정지, SFX 재생, 볼륨 조절, 음소거) |
+| `apps/frontend/src/components/AudioControl.tsx` | 신규 생성. 오디오 컨트롤 UI (음소거 토글, 볼륨 슬라이더) |
+| `apps/frontend/src/main.tsx` | AudioProvider 래퍼 추가 |
+| `apps/frontend/src/pages/GamePage.tsx` | 게임 이벤트별 오디오 재생 연동 |
+
+#### 오디오 파일 위치
+
+```
+apps/frontend/public/audio/
+├── bgm/
+│   ├── lobby.mp3      - 로비/대기방 BGM
+│   ├── game.mp3       - 게임 중 BGM
+│   └── victory.mp3    - 게임 종료 BGM
+└── sfx/
+    ├── dice-roll.mp3       - 주사위 굴리기
+    ├── bet-place.mp3       - 베팅 선언
+    ├── challenge.mp3       - 도전 선언
+    ├── challenge-win.mp3   - 도전 성공
+    ├── challenge-lose.mp3  - 도전 실패
+    ├── eliminated.mp3      - 플레이어 탈락
+    ├── round-start.mp3     - 라운드 시작
+    ├── my-turn.mp3         - 내 턴 알림
+    ├── button-click.mp3    - 버튼 클릭
+    ├── chat-message.mp3    - 채팅 수신
+    ├── challenge-phase.mp3 - 도전 타임 시작
+    ├── timer-warning.mp3   - 3초 경고
+    ├── pass.mp3            - 묵시
+    ├── player-join.mp3     - 플레이어 입장
+    ├── player-leave.mp3    - 플레이어 퇴장
+    ├── game-start.mp3      - 게임 시작
+    └── dice-reveal.mp3     - 주사위 공개
+```
+
+---
+
+### 게임 플레이 개선 및 도망치기 기능 추가
+
+**요청**: 묵시 후 도전 버튼 숨기기, 탈락 플레이어 채팅 허용, 접속 종료 플레이어 탈락 처리, 채팅 말풍선 위치 조정, 도망치기 버튼 추가
+
+#### 변경 사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `apps/frontend/src/pages/GamePage.tsx` | roundPassedPlayerIds 상태 추가로 묵시한 플레이어 도전 버튼 숨김, 탈락 플레이어 채팅 허용, 내 채팅 말풍선 오른편 위치 조정, 도망치기 버튼 및 handleRunaway 함수 추가 |
+| `apps/backend/src/game/game.gateway.ts` | handlePlayerDisconnectDuringGame 메서드로 접속 종료 플레이어 탈락 처리, game:runaway 핸들러 추가 |
+
+#### 기능 상세
+
+| 기능 | 설명 |
+|------|------|
+| 묵시 후 도전 불가 | 도전 타임에 묵시를 선택한 플레이어는 해당 라운드 내에서 베팅 패널의 도전 버튼이 표시되지 않음 |
+| 탈락 플레이어 채팅 | 탈락한 플레이어도 채팅 버튼을 사용하여 메시지 전송 가능 |
+| 접속 종료 처리 | 게임 중 접속 종료 시 해당 플레이어 탈락 처리, 턴이었다면 다음 플레이어로 넘김, 1명 남으면 게임 종료 |
+| 채팅 말풍선 위치 | 내 채팅 말풍선이 TREASURE CHEST 프레임 오른편에 표시 |
+| 도망치기 버튼 | 게임 중 헤더 우측 상단에 "🏃 도망" 버튼 표시, 클릭 시 확인 후 탈락 및 로비 이동 |
+
+---
+
 ### 빠른 채팅 기능 추가
 
 **요청**: 채팅 버튼 클릭 -> 카테고리 선택 -> 템플릿 메시지 선택 -> 말풍선 표시

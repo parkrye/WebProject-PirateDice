@@ -65,7 +65,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const playerInfo = this.socketPlayerMap.get(client.id);
     if (playerInfo) {
-      // 방에서 플레이어 제거 또는 연결 끊김 상태로 변경
       const engine = this.roomsService.getGameEngine(playerInfo.roomId);
       if (engine) {
         const room = engine.getRoom();
@@ -74,15 +73,105 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (room.status === 'waiting') {
           this.roomsService.leaveRoom(playerInfo.roomId, playerInfo.playerId);
 
-          // 다른 플레이어들에게 알림
           this.server.to(playerInfo.roomId).emit(SERVER_EVENTS.PLAYER_LEFT, {
             playerId: playerInfo.playerId,
             playerCount: room.players.length,
           });
         }
+        // 게임 중이면 탈락 처리
+        else if (room.status === 'playing') {
+          this.handlePlayerDisconnectDuringGame(playerInfo.roomId, playerInfo.playerId);
+        }
       }
 
       this.socketPlayerMap.delete(client.id);
+    }
+  }
+
+  /**
+   * 게임 중 플레이어 접속 종료 처리
+   */
+  private handlePlayerDisconnectDuringGame(roomId: string, playerId: string) {
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) return;
+
+    const room = engine.getRoom();
+    const player = room.players.find(p => p.id === playerId);
+    if (!player || !player.isAlive) return;
+
+    // 플레이어 탈락 처리
+    player.isAlive = false;
+    room.discardedDice += player.diceCount;
+    player.diceCount = 0;
+    player.currentDice = [];
+
+    // 도전 타임 중이면 취소
+    const challengePhase = this.challengePhaseMap.get(roomId);
+    if (challengePhase) {
+      // 해당 플레이어가 베팅자였으면 도전 타임 취소
+      if (challengePhase.bettorId === playerId) {
+        if (challengePhase.timer) {
+          clearTimeout(challengePhase.timer);
+        }
+        this.challengePhaseMap.delete(roomId);
+      } else {
+        // 도전 가능 목록에서 제거
+        challengePhase.eligiblePlayerIds = challengePhase.eligiblePlayerIds.filter(id => id !== playerId);
+        // 모두 패스했는지 확인
+        const allPassed = challengePhase.eligiblePlayerIds.every(id =>
+          challengePhase.passedPlayerIds.has(id)
+        );
+        if (allPassed) {
+          this.endChallengePhase(roomId, 'all_passed');
+        }
+      }
+    }
+
+    // 탈락 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_ELIMINATED, {
+      playerId,
+      playerNickname: player.nickname,
+    });
+
+    // 생존자 수 확인
+    const alivePlayers = room.players.filter(p => p.isAlive);
+
+    // 1명만 남으면 게임 종료
+    if (alivePlayers.length <= 1) {
+      room.status = 'finished';
+      const winner = alivePlayers[0];
+      if (winner) {
+        room.winnerId = winner.id;
+        this.server.to(roomId).emit(SERVER_EVENTS.GAME_ENDED, {
+          winnerId: winner.id,
+          winnerNickname: winner.nickname,
+        });
+      }
+      return;
+    }
+
+    // 해당 플레이어 턴이었으면 다음 턴으로
+    if (room.currentTurnPlayerId === playerId) {
+      // 다음 플레이어 찾기
+      const sortedAlive = alivePlayers.sort((a, b) => a.order - b.order);
+      const currentIdx = sortedAlive.findIndex(p => p.order > (player.order ?? 0));
+      const nextPlayer = currentIdx >= 0 ? sortedAlive[currentIdx] : sortedAlive[0];
+
+      if (nextPlayer) {
+        room.currentTurnPlayerId = nextPlayer.id;
+
+        // 턴 변경 알림
+        this.server.to(roomId).emit(SERVER_EVENTS.TURN_CHANGED, {
+          currentPlayerId: nextPlayer.id,
+          currentBet: room.currentBet
+            ? {
+                playerId: room.currentBet.playerId,
+                diceValue: room.currentBet.diceValue,
+                diceCount: room.currentBet.diceCount,
+              }
+            : null,
+        });
+      }
     }
   }
 
@@ -693,6 +782,132 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       nickname: player.nickname,
       message,
     });
+
+    return { success: true };
+  }
+
+  /**
+   * 도망치기 (게임 중 자발적 탈락)
+   */
+  @SubscribeMessage('game:runaway')
+  handleRunaway(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string }
+  ): { success: boolean; error?: string } {
+    const { roomId } = payload;
+    const playerInfo = this.socketPlayerMap.get(client.id);
+
+    if (!playerInfo || playerInfo.roomId !== roomId) {
+      return { success: false, error: 'INVALID_ROOM' };
+    }
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) {
+      return { success: false, error: 'ROOM_NOT_FOUND' };
+    }
+
+    const room = engine.getRoom();
+
+    // 게임 중에만 도망 가능
+    if (room.status !== 'playing') {
+      return { success: false, error: 'GAME_NOT_IN_PROGRESS' };
+    }
+
+    const player = room.players.find(p => p.id === playerInfo.playerId);
+    if (!player) {
+      return { success: false, error: 'PLAYER_NOT_FOUND' };
+    }
+
+    // 이미 탈락한 플레이어도 도망 가능 (관전 중인 경우)
+    const wasAlive = player.isAlive;
+
+    // 플레이어 탈락 처리
+    if (wasAlive) {
+      player.isAlive = false;
+      room.discardedDice += player.diceCount;
+      player.diceCount = 0;
+      player.currentDice = [];
+
+      // 도전 타임 중이면 처리
+      const challengePhase = this.challengePhaseMap.get(roomId);
+      if (challengePhase) {
+        if (challengePhase.bettorId === playerInfo.playerId) {
+          if (challengePhase.timer) {
+            clearTimeout(challengePhase.timer);
+          }
+          this.challengePhaseMap.delete(roomId);
+        } else {
+          challengePhase.eligiblePlayerIds = challengePhase.eligiblePlayerIds.filter(
+            id => id !== playerInfo.playerId
+          );
+          const allPassed = challengePhase.eligiblePlayerIds.every(id =>
+            challengePhase.passedPlayerIds.has(id)
+          );
+          if (allPassed) {
+            this.endChallengePhase(roomId, 'all_passed');
+          }
+        }
+      }
+
+      // 탈락 알림
+      this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_ELIMINATED, {
+        playerId: playerInfo.playerId,
+        playerNickname: player.nickname,
+      });
+    }
+
+    // 방에서 플레이어 제거
+    this.roomsService.leaveRoom(roomId, playerInfo.playerId);
+
+    // 소켓 룸에서 나가기
+    client.leave(roomId);
+    this.socketPlayerMap.delete(client.id);
+
+    // 퇴장 알림
+    this.server.to(roomId).emit(SERVER_EVENTS.PLAYER_LEFT, {
+      playerId: playerInfo.playerId,
+      nickname: player.nickname,
+      playerCount: room.players.length,
+    });
+
+    // 생존자 수 확인
+    const alivePlayers = room.players.filter(p => p.isAlive);
+
+    // 1명만 남으면 게임 종료
+    if (alivePlayers.length <= 1) {
+      room.status = 'finished';
+      const winner = alivePlayers[0];
+      if (winner) {
+        room.winnerId = winner.id;
+        this.server.to(roomId).emit(SERVER_EVENTS.GAME_ENDED, {
+          winnerId: winner.id,
+          winnerNickname: winner.nickname,
+        });
+      }
+      return { success: true };
+    }
+
+    // 해당 플레이어 턴이었으면 다음 턴으로
+    if (wasAlive && room.currentTurnPlayerId === playerInfo.playerId) {
+      const sortedAlive = alivePlayers.sort((a, b) => a.order - b.order);
+      const currentIdx = sortedAlive.findIndex(p => p.order > (player.order ?? 0));
+      const nextPlayer = currentIdx >= 0 ? sortedAlive[currentIdx] : sortedAlive[0];
+
+      if (nextPlayer) {
+        room.currentTurnPlayerId = nextPlayer.id;
+
+        this.server.to(roomId).emit(SERVER_EVENTS.TURN_CHANGED, {
+          currentPlayerId: nextPlayer.id,
+          currentBet: room.currentBet
+            ? {
+                playerId: room.currentBet.playerId,
+                diceValue: room.currentBet.diceValue,
+                diceCount: room.currentBet.diceCount,
+              }
+            : null,
+        });
+      }
+    }
 
     return { success: true };
   }
