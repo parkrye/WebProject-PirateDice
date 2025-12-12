@@ -103,12 +103,21 @@ export function GamePage() {
   // 탈락 상태
   const [isEliminated, setIsEliminated] = useState(false);
 
+  // 도전 연출 중 대기할 데이터 (연출 완료 후 처리)
+  const [pendingRoundData, setPendingRoundData] = useState<{
+    round: number;
+    yourDice: number[];
+    isEliminated?: boolean;
+  } | null>(null);
+  const [pendingGameEnd, setPendingGameEnd] = useState<string | null>(null);
+
   const playerId = sessionStorage.getItem('playerId');
   const nickname = sessionStorage.getItem('nickname');
 
   // useRef로 최신 상태 참조 (이벤트 핸들러에서 사용)
   const playersRef = useRef<PlayerInfo[]>([]);
   const currentBetRef = useRef<CurrentBet | null>(null);
+  const challengeResultRef = useRef<ChallengeResult | null>(null);
 
   // ref 동기화
   useEffect(() => {
@@ -118,6 +127,10 @@ export function GamePage() {
   useEffect(() => {
     currentBetRef.current = currentBet;
   }, [currentBet]);
+
+  useEffect(() => {
+    challengeResultRef.current = challengeResult;
+  }, [challengeResult]);
 
   const isMyTurn = currentTurnPlayerId === playerId;
   const isFirstTurn = currentBet === null;
@@ -158,16 +171,58 @@ export function GamePage() {
     return () => clearInterval(timer);
   }, [challengePhase?.active]);
 
-  // 도전 결과 모달 닫기
+  // 도전 결과 모달 닫기 및 대기 데이터 처리
   const handleCloseChallengeResult = useCallback(() => {
     setChallengeResult(null);
-  }, []);
 
-  // 게임 종료 모달 닫기
+    // 대기 중인 게임 종료 처리
+    if (pendingGameEnd) {
+      setGameWinner(pendingGameEnd);
+      setPendingGameEnd(null);
+      return;
+    }
+
+    // 대기 중인 라운드 데이터 처리
+    if (pendingRoundData) {
+      if (pendingRoundData.isEliminated) {
+        setIsEliminated(true);
+        setMyDice([]);
+      } else {
+        setRound(pendingRoundData.round);
+        setCurrentBet(null);
+        setShowRoundStart(true);
+        setIsRolling(true);
+
+        setTimeout(() => {
+          setMyDice(pendingRoundData.yourDice);
+        }, 500);
+
+        setTimeout(() => {
+          setIsRolling(false);
+        }, 2000);
+      }
+      setPendingRoundData(null);
+    }
+  }, [pendingGameEnd, pendingRoundData]);
+
+  // 게임 종료 모달 닫기 - 대기방으로 리셋
   const handleCloseGameEnd = useCallback(() => {
+    if (!roomId) {
+      navigate('/lobby');
+      return;
+    }
+
+    // 서버에 게임 리셋 요청
+    socket.emit('game:reset', { roomId }, (response: { success: boolean; error?: string }) => {
+      if (!response?.success) {
+        console.error('Game reset failed:', response?.error);
+        navigate('/lobby');
+      }
+      // 성공 시 game:reset 이벤트로 상태 업데이트됨
+    });
+
     setGameWinner(null);
-    navigate('/lobby');
-  }, [navigate]);
+  }, [roomId, socket, navigate]);
 
   // 라운드 시작 오버레이 완료
   const handleRoundStartComplete = useCallback(() => {
@@ -285,9 +340,15 @@ export function GamePage() {
 
     // 라운드 시작 - 주사위 굴리기 애니메이션
     socket.on('round:started', (data: { round: number; yourDice: number[]; isEliminated?: boolean }) => {
-      // 이전 연출 상태 초기화 (도전 결과 모달은 제외 - 모달에서 자체적으로 닫음)
+      // 이전 연출 상태 초기화
       setLastBet(null);
       setChallengePhase(null);
+
+      // 도전 연출 중이면 대기
+      if (challengeResultRef.current) {
+        setPendingRoundData(data);
+        return;
+      }
 
       // 탈락 여부 확인
       if (data.isEliminated) {
@@ -421,10 +482,37 @@ export function GamePage() {
       );
     });
 
-    // 게임 종료 - 승자 모달 표시
+    // 게임 종료 - 도전 연출 중이면 대기
     socket.on('game:ended', (data: { winnerNickname: string }) => {
       setGameStatus('finished');
+
+      // 도전 연출 중이면 대기
+      if (challengeResultRef.current) {
+        setPendingGameEnd(data.winnerNickname);
+        return;
+      }
+
       setGameWinner(data.winnerNickname);
+    });
+
+    // 게임 리셋 - 대기방으로 복귀
+    socket.on('game:reset', (data: {
+      players: PlayerInfo[];
+      hostId: string;
+    }) => {
+      setGameStatus('waiting');
+      setPlayers(data.players);
+      setHostId(data.hostId);
+      setIsReady(false);
+      setMyDice([]);
+      setCurrentBet(null);
+      setCurrentTurnPlayerId(null);
+      setRound(0);
+      setChallengeResult(null);
+      setChallengePhase(null);
+      setIsEliminated(false);
+      setPendingRoundData(null);
+      setPendingGameEnd(null);
     });
 
     socket.on('error', (data: { message: string }) => {
@@ -464,6 +552,7 @@ export function GamePage() {
       socket.off('challenge:result');
       socket.off('player:eliminated');
       socket.off('game:ended');
+      socket.off('game:reset');
       socket.off('error');
       socket.off('chat:message');
     };

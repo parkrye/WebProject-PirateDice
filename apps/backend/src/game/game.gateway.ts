@@ -696,4 +696,50 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     return { success: true };
   }
+
+  /**
+   * 게임 리셋 (대기방으로 복귀)
+   */
+  @SubscribeMessage('game:reset')
+  handleGameReset(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string }
+  ): { success: boolean; error?: string } {
+    const { roomId } = payload;
+    const playerInfo = this.socketPlayerMap.get(client.id);
+
+    if (!playerInfo || playerInfo.roomId !== roomId) {
+      return { success: false, error: 'INVALID_ROOM' };
+    }
+
+    const engine = this.roomsService.getGameEngine(roomId);
+    if (!engine) {
+      return { success: false, error: 'ROOM_NOT_FOUND' };
+    }
+
+    const room = engine.getRoom();
+
+    // 게임이 종료된 상태에서만 리셋 가능
+    if (room.status !== 'finished') {
+      return { success: false, error: 'GAME_NOT_FINISHED' };
+    }
+
+    // 게임 리셋
+    engine.resetGame();
+
+    // 모든 플레이어에게 리셋 알림
+    this.server.to(roomId).emit('game:reset', {
+      players: room.players.map(p => ({
+        id: p.id,
+        nickname: p.nickname,
+        diceCount: p.diceCount,
+        order: p.order,
+        isAlive: p.isAlive,
+        isReady: p.isReady,
+      })),
+      hostId: room.hostId,
+    });
+
+    return { success: true };
+  }
 }

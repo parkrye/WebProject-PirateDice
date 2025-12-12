@@ -394,4 +394,28 @@ export class GameEngine {
   getCurrentTurnPlayerId(): string | null {
     return this.room.currentTurnPlayerId;
   }
+
+  /**
+   * 게임 리셋 (대기방으로 복귀)
+   */
+  resetGame(): void {
+    this.room.status = 'waiting';
+    this.room.currentRound = 0;
+    this.room.currentBet = null;
+    this.room.currentTurnPlayerId = null;
+    this.room.winnerId = null;
+    this.room.discardedDice = 0;
+
+    // 모든 플레이어 초기화
+    for (const player of this.room.players) {
+      player.diceCount = 0;
+      player.currentDice = [];
+      player.isAlive = true;
+      player.isReady = false;
+      player.order = 0;
+    }
+
+    // 라운드 매니저 초기화
+    this.roundManager.reset();
+  }
 }

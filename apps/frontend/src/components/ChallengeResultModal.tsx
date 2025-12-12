@@ -55,18 +55,18 @@ export function ChallengeResultModal({ result, onClose }: ChallengeResultModalPr
     const timers: ReturnType<typeof setTimeout>[] = [];
     const totalPlayers = result.allDice.length;
 
-    // 1. 베팅 선언 (1.5초)
-    timers.push(setTimeout(() => setPhase('challenger'), 1500));
+    // 1. 베팅 선언 (0.8초)
+    timers.push(setTimeout(() => setPhase('challenger'), 800));
 
-    // 2. 도전자 등장 (1.5초)
+    // 2. 도전자 등장 (0.8초)
     timers.push(setTimeout(() => {
       setPhase('reveal');
       setRevealingPlayerIndex(0);
       setRevealedDiceCount(0);
-    }, 3000));
+    }, 1600));
 
-    // 3. 각 플레이어 주사위 순차 공개
-    let currentTime = 3000;
+    // 3. 각 플레이어 주사위 순차 공개 (빠르게)
+    let currentTime = 1600;
     for (let playerIdx = 0; playerIdx < totalPlayers; playerIdx++) {
       const playerDice = result.allDice[playerIdx]?.dice ?? [];
 
@@ -76,24 +76,24 @@ export function ChallengeResultModal({ result, onClose }: ChallengeResultModalPr
         setRevealedDiceCount(0);
       }, currentTime));
 
-      // 각 주사위 하나씩 공개 (0.4초 간격)
+      // 각 주사위 하나씩 공개 (0.12초 간격)
       for (let diceIdx = 0; diceIdx <= playerDice.length; diceIdx++) {
         timers.push(setTimeout(() => {
           setRevealedDiceCount(diceIdx);
-        }, currentTime + (diceIdx * 400)));
+        }, currentTime + (diceIdx * 120)));
       }
 
-      currentTime += (playerDice.length + 1) * 400 + 300; // 플레이어 간 간격
+      currentTime += (playerDice.length + 1) * 120 + 150; // 플레이어 간 간격
     }
 
-    // 4. 카운트 페이즈 (currentTime + 0.5초)
+    // 4. 카운트 페이즈 (currentTime + 0.3초)
     timers.push(setTimeout(() => {
       setPhase('count');
       setRevealingPlayerIndex(totalPlayers); // 모든 플레이어 공개 완료
 
-      // 카운트 애니메이션
-      const countDuration = 1200;
-      const steps = 15;
+      // 카운트 애니메이션 (빠르게)
+      const countDuration = 600;
+      const steps = 10;
       const stepTime = countDuration / steps;
       let currentStep = 0;
 
@@ -109,13 +109,13 @@ export function ChallengeResultModal({ result, onClose }: ChallengeResultModalPr
       }, stepTime);
 
       timers.push(countInterval as unknown as ReturnType<typeof setTimeout>);
-    }, currentTime + 500));
+    }, currentTime + 300));
 
-    // 5. 결과 발표 (카운트 후 1.5초)
-    timers.push(setTimeout(() => setPhase('result'), currentTime + 2200));
+    // 5. 결과 발표 (카운트 후 0.8초)
+    timers.push(setTimeout(() => setPhase('result'), currentTime + 1100));
 
-    // 6. 자동 닫기 (결과 후 4초)
-    timers.push(setTimeout(() => onClose(), currentTime + 6200));
+    // 6. 자동 닫기 (결과 후 2.5초)
+    timers.push(setTimeout(() => onClose(), currentTime + 3600));
 
     return () => {
       timers.forEach(timer => clearTimeout(timer));
